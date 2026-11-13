@@ -1,8 +1,7 @@
+const apiResponse = require('../utils/apiResponse');
+
 const errorHandler = (err, req, res, next) => {
     const statusCode = res.statusCode >= 400 ? res.statusCode : 500;
-    res.status(statusCode).json({
-        success: false,
-        message: err.message || 'Internal Server Error',
-    });
+    apiResponse.errorResponse(res, err.message || 'Internal Server Error', statusCode);
 };
 module.exports = errorHandler;

@@ -1,7 +1,7 @@
+const apiResponse = require('../utils/apiResponse');
+
 const notFound = (req, res, next) =>{
-    res.status(404).json({
-        success: false,
-        message: 'Route not found',
-    })
-}
+    apiResponse.errorResponse(res, 'Route not found', 404);
+};
+
 module.exports = notFound;
