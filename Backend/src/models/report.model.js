@@ -32,7 +32,7 @@ const reportSchema = new mongoose.Schema(
             ref: 'User',
             default: null
         },
-        static:
+        status:
         {
             type: String,
             enum: ['pending', 'resolved', 'rejected'],
@@ -44,6 +44,9 @@ const reportSchema = new mongoose.Schema(
         versionKey: false
     }
 )
+reportSchema.index({
+    status: 1, createdAt: -1 
+});
 
 const Report = mongoose.model('Report', reportSchema)
 module.exports = Report

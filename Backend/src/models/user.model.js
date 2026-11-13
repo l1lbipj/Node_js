@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema(
         enum: ['admin', 'reader', 'publisher'],
         default: 'reader'
     },
-    avartar:
+    avatar:
     {
         type: String,
         default: null

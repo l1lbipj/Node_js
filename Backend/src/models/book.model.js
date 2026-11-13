@@ -15,7 +15,7 @@ const bookSchema = new mongoose.Schema({
     {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
-        ref: 'publisher'
+        ref: 'Publisher'
     },
     category:         //thể loại
     {
