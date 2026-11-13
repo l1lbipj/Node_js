@@ -1,12 +1,22 @@
-const express = require('express');
-const app = express();
-const dotenv = require('dotenv');
+require('dotenv').config();
 
-dotenv.config();
+const app = require('./app');
+const connectDB = require('./configs/database');
 
-app.get('/', (req, res) => {
-  res.send('Hello World!');
-});
-app.listen(process.env.PORT, () => {
-  console.log(`Server is running on http://localhost:${process.env.PORT}`);
-});
+const PORT = process.env.PORT || 3000;
+
+const startServer = async () => {
+  try {
+    await connectDB();
+
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+      console.log(`API: http://localhost:${PORT}/api/health`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error.message);
+    process.exit(1);
+  }
+};
+
+startServer();

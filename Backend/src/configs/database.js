@@ -1,20 +1,19 @@
+
 const mongoose = require('mongoose');
+require('dotenv').config();
 
 const connectDB = async () => {
-  const uri = process.env.MONGODB_URI;
-
-  if (!uri || !uri.trim()) {
-    throw new Error('MONGODB_URI is not set. Add it to Backend/.env before connecting.');
-  }
-
   try {
-    await mongoose.connect(uri);
+    if (!process.env.MONGODB_URI) {
+      throw new Error('MONGODB_URI is not defined');
+    }
 
-    console.log(
-      `MongoDB connected: ${mongoose.connection.host}`
-    );
+    await mongoose.connect(process.env.MONGODB_URI);
+
+    console.log('MongoDB connected successfully!');
+    console.log(`Host: ${mongoose.connection.host}`);
   } catch (error) {
-    console.error('MongoDB connection error:', error.message);
+    console.error('MongoDB connection failed:', error.message);
     throw error;
   }
 };
