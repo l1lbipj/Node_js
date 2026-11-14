@@ -6,6 +6,7 @@ const errorHandler = require('./middlewares/errorHandler');
 const apiResponse = require('./utils/apiResponse');
 const app = express();
 const bookRoutes = require('./routes/book.routes');
+const authRoutes = require('./routes/auth.routes');
 
 // Middleware
 app.use(express.json());
@@ -18,6 +19,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/books', bookRoutes);
 
 app.use(notFound);
