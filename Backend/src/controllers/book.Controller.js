@@ -239,8 +239,27 @@ const updateBook = async (req, res, next) => {
                 updateData[field] = req.body[field];
             }
         });
+        // 5. Kiểm tra dữ liệu cập nhật
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Không có dữ liệu hợp lệ để cập nhật',
+                errors: []
+            });
+        }
 
-        // 5. Cập nhật sách
+        // 6. Kiểm tra định dạng và chuẩn hóa ảnh bìa
+        if (updateData.coverImage !== undefined) {
+            if (!isValidCoverImage(updateData.coverImage)) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Đường dẫn ảnh bìa không hợp lệ',
+                    errors: []
+                });
+            }
+            updateData.coverImage = updateData.coverImage.trim();
+        }
+        // 7. Cập nhật sách
         const updatedBook = await Book.findByIdAndUpdate(
             id,
             { $set: updateData },
