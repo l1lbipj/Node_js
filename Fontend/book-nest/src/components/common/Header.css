@@ -1,0 +1,243 @@
+
+/* ========================================
+   BOOK NEST - HEADER
+======================================== */
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.header-container {
+  width: min(var(--container-width), calc(100% - 48px));
+  min-height: var(--header-height);
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+}
+
+/* Logo */
+
+.header-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  color: var(--color-primary-dark);
+}
+
+.logo-icon {
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 21px;
+}
+
+.logo-text {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+.logo-text strong {
+  color: var(--color-accent);
+}
+
+/* Desktop navigation */
+
+.desktop-navigation {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.navigation-link {
+  position: relative;
+  padding: 25px 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.navigation-link:hover {
+  color: var(--color-accent);
+}
+
+/* Search */
+
+.header-search {
+  width: 250px;
+  flex-shrink: 1;
+}
+
+.header-search .ant-input-affix-wrapper {
+  min-height: 40px;
+  border-color: var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  box-shadow: none;
+}
+
+.header-search .ant-input-affix-wrapper:hover,
+.header-search .ant-input-affix-wrapper-focused {
+  border-color: var(--color-accent);
+}
+
+.header-search .ant-input {
+  background: transparent;
+  font-size: 12px;
+}
+
+.header-search .ant-input-prefix {
+  color: var(--color-text-secondary);
+  margin-right: 8px;
+}
+
+/* Authentication */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.login-button {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.login-button:hover {
+  color: var(--color-accent) !important;
+}
+
+.register-button {
+  height: 38px;
+  padding: 0 18px;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.register-button:hover {
+  background: var(--color-primary-dark) !important;
+}
+
+/* Mobile menu */
+
+.mobile-menu-button {
+  display: none;
+  width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-primary);
+  font-size: 19px;
+}
+
+.mobile-navigation {
+  display: none;
+}
+
+/* Tablet */
+
+@media (max-width: 1100px) {
+  .header-container {
+    gap: 16px;
+  }
+
+  .desktop-navigation {
+    gap: 14px;
+  }
+
+  .header-search {
+    width: 200px;
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 850px) {
+  .header-container {
+    min-height: 64px;
+  }
+
+  .desktop-navigation,
+  .header-search,
+  .header-actions {
+    display: none;
+  }
+
+  .mobile-menu-button {
+    display: flex;
+  }
+
+  .mobile-navigation {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+
+    padding: 12px 24px 20px;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+  }
+
+  .mobile-navigation-link {
+    padding: 13px 0;
+    color: var(--color-text);
+    font-weight: 600;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .mobile-navigation-link:hover {
+    color: var(--color-accent);
+  }
+
+  .mobile-auth-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding-top: 16px;
+  }
+
+  .mobile-auth-actions a {
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  .mobile-auth-actions a:hover {
+    color: var(--color-accent);
+  }
+}
+
+@media (max-width: 480px) {
+  .header-container {
+    width: calc(100% - 32px);
+  }
+
+  .logo-text {
+    font-size: 18px;
+  }
+}
