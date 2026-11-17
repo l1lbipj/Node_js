@@ -1,0 +1,27 @@
+
+:root {
+  /* Colors */
+  --primary-color: #1677ff;
+  --primary-hover: #4096ff;
+
+  --text-primary: #1f1f1f;
+  --text-secondary: #666666;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f5f7fa;
+
+  --border-color: #e8e8e8;
+  --danger-color: #ff4d4f;
+  --success-color: #52c41a;
+
+  /* Typography */
+  --font-family: Arial, Helvetica, sans-serif;
+
+  /* Layout */
+  --header-height: 64px;
+  --sidebar-width: 250px;
+
+  /* Effects */
+  --border-radius: 8px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
