@@ -1,7 +1,7 @@
-require('dotenv').config();
+require("dotenv").config();
 
-const app = require('./app');
-const connectDB = require('./configs/database');
+const app = require("./app");
+const connectDB = require("./configs/database");
 
 const PORT = process.env.PORT || 3000;
 
@@ -14,7 +14,7 @@ const startServer = async () => {
       console.log(`API: http://localhost:${PORT}/api/health`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error.message);
+    console.error("Failed to start server:", error.message);
     process.exit(1);
   }
 };
