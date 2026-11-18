@@ -6,11 +6,7 @@ const { successResponse, errorResponse } = require("../utils/apiResponse");
 // 1. Lấy danh sách Publisher
 const getAllPublishers = async (req, res, next) => {
   try {
-    const {
-      search = "",
-      page = 1,
-      limit = 10,
-    } = req.query;
+    const { search = "", page = 1, limit = 10 } = req.query;
 
     const currentPage = Number(page);
     const pageLimit = Number(limit);
@@ -23,11 +19,7 @@ const getAllPublishers = async (req, res, next) => {
       pageLimit < 1 ||
       pageLimit > 100
     ) {
-      return errorResponse(
-        res,
-        "Thông tin phân trang không hợp lệ",
-        400
-      );
+      return errorResponse(res, "Thông tin phân trang không hợp lệ", 400);
     }
 
     // Tạo điều kiện tìm kiếm
@@ -36,7 +28,7 @@ const getAllPublishers = async (req, res, next) => {
     if (search.trim()) {
       const searchRegex = new RegExp(
         search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
-        "i"
+        "i",
       );
 
       filter.$or = [
@@ -56,19 +48,15 @@ const getAllPublishers = async (req, res, next) => {
 
     const totalPublishers = await Publisher.countDocuments(filter);
 
-    return successResponse(
-      res,
-      "Lấy danh sách nhà xuất bản thành công",
-      {
-        publishers,
-        pagination: {
-          totalPublishers,
-          currentPage,
-          totalPages: Math.ceil(totalPublishers / pageLimit),
-          limit: pageLimit,
-        },
-      }
-    );
+    return successResponse(res, "Lấy danh sách nhà xuất bản thành công", {
+      publishers,
+      pagination: {
+        totalPublishers,
+        currentPage,
+        totalPages: Math.ceil(totalPublishers / pageLimit),
+        limit: pageLimit,
+      },
+    });
   } catch (error) {
     next(error);
   }
@@ -81,28 +69,22 @@ const getPublisherById = async (req, res, next) => {
 
     // Kiểm tra ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorResponse(
-        res,
-        "ID nhà xuất bản không hợp lệ",
-        400
-      );
+      return errorResponse(res, "ID nhà xuất bản không hợp lệ", 400);
     }
 
-    const publisher = await Publisher.findById(id)
-      .populate("userId", "fullName email role");
+    const publisher = await Publisher.findById(id).populate(
+      "userId",
+      "fullName email role",
+    );
 
     if (!publisher) {
-      return errorResponse(
-        res,
-        "Không tìm thấy nhà xuất bản",
-        404
-      );
+      return errorResponse(res, "Không tìm thấy nhà xuất bản", 404);
     }
 
     return successResponse(
       res,
       "Lấy thông tin nhà xuất bản thành công",
-      publisher
+      publisher,
     );
   } catch (error) {
     next(error);
@@ -112,58 +94,32 @@ const getPublisherById = async (req, res, next) => {
 // 3. Tạo Publisher
 const createPublisher = async (req, res, next) => {
   try {
-    const {
-      userId,
-      name,
-      description,
-      email,
-      phone,
-      address,
-    } = req.body;
+    const { userId, name, description, email, phone, address } = req.body;
 
     // Kiểm tra các trường bắt buộc
-    if (
-      !userId ||
-      !name ||
-      !description ||
-      !email ||
-      !phone ||
-      !address
-    ) {
+    if (!userId || !name || !description || !email || !phone || !address) {
       return errorResponse(
         res,
         "Vui lòng cung cấp đầy đủ thông tin nhà xuất bản",
-        400
+        400,
       );
     }
 
     // Kiểm tra User ID
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return errorResponse(
-        res,
-        "User ID không hợp lệ",
-        400
-      );
+      return errorResponse(res, "User ID không hợp lệ", 400);
     }
 
     // Kiểm tra User tồn tại
     const user = await User.findById(userId);
 
     if (!user) {
-      return errorResponse(
-        res,
-        "Không tìm thấy tài khoản User",
-        404
-      );
+      return errorResponse(res, "Không tìm thấy tài khoản User", 404);
     }
 
     // User phải có role Publisher
     if (user.role !== "publisher") {
-      return errorResponse(
-        res,
-        "Tài khoản User phải có quyền Publisher",
-        400
-      );
+      return errorResponse(res, "Tài khoản User phải có quyền Publisher", 400);
     }
 
     // Kiểm tra Email đã tồn tại
@@ -172,11 +128,7 @@ const createPublisher = async (req, res, next) => {
     });
 
     if (existingEmail) {
-      return errorResponse(
-        res,
-        "Email nhà xuất bản đã tồn tại",
-        409
-      );
+      return errorResponse(res, "Email nhà xuất bản đã tồn tại", 409);
     }
 
     // Kiểm tra Phone đã tồn tại
@@ -185,11 +137,7 @@ const createPublisher = async (req, res, next) => {
     });
 
     if (existingPhone) {
-      return errorResponse(
-        res,
-        "Số điện thoại nhà xuất bản đã tồn tại",
-        409
-      );
+      return errorResponse(res, "Số điện thoại nhà xuất bản đã tồn tại", 409);
     }
 
     // Tạo Publisher
@@ -202,12 +150,7 @@ const createPublisher = async (req, res, next) => {
       address,
     });
 
-    return successResponse(
-      res,
-      "Tạo nhà xuất bản thành công",
-      publisher,
-      201
-    );
+    return successResponse(res, "Tạo nhà xuất bản thành công", publisher, 201);
   } catch (error) {
     next(error);
   }
@@ -218,32 +161,18 @@ const updatePublisher = async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const {
-      name,
-      description,
-      email,
-      phone,
-      address,
-    } = req.body;
+    const { name, description, email, phone, address } = req.body;
 
     // Kiểm tra ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorResponse(
-        res,
-        "ID nhà xuất bản không hợp lệ",
-        400
-      );
+      return errorResponse(res, "ID nhà xuất bản không hợp lệ", 400);
     }
 
     // Kiểm tra Publisher tồn tại
     const publisher = await Publisher.findById(id);
 
     if (!publisher) {
-      return errorResponse(
-        res,
-        "Không tìm thấy nhà xuất bản",
-        404
-      );
+      return errorResponse(res, "Không tìm thấy nhà xuất bản", 404);
     }
 
     // Kiểm tra Email trùng
@@ -256,11 +185,7 @@ const updatePublisher = async (req, res, next) => {
       });
 
       if (existingEmail) {
-        return errorResponse(
-          res,
-          "Email nhà xuất bản đã tồn tại",
-          409
-        );
+        return errorResponse(res, "Email nhà xuất bản đã tồn tại", 409);
       }
 
       publisher.email = normalizedEmail;
@@ -274,11 +199,7 @@ const updatePublisher = async (req, res, next) => {
       });
 
       if (existingPhone) {
-        return errorResponse(
-          res,
-          "Số điện thoại nhà xuất bản đã tồn tại",
-          409
-        );
+        return errorResponse(res, "Số điện thoại nhà xuất bản đã tồn tại", 409);
       }
 
       publisher.phone = phone.trim();
@@ -299,11 +220,7 @@ const updatePublisher = async (req, res, next) => {
 
     await publisher.save();
 
-    return successResponse(
-      res,
-      "Cập nhật nhà xuất bản thành công",
-      publisher
-    );
+    return successResponse(res, "Cập nhật nhà xuất bản thành công", publisher);
   } catch (error) {
     next(error);
   }
@@ -316,30 +233,18 @@ const deletePublisher = async (req, res, next) => {
 
     // Kiểm tra ObjectId
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorResponse(
-        res,
-        "ID nhà xuất bản không hợp lệ",
-        400
-      );
+      return errorResponse(res, "ID nhà xuất bản không hợp lệ", 400);
     }
 
     const publisher = await Publisher.findById(id);
 
     if (!publisher) {
-      return errorResponse(
-        res,
-        "Không tìm thấy nhà xuất bản",
-        404
-      );
+      return errorResponse(res, "Không tìm thấy nhà xuất bản", 404);
     }
 
     await Publisher.findByIdAndDelete(id);
 
-    return successResponse(
-      res,
-      "Xóa nhà xuất bản thành công",
-      null
-    );
+    return successResponse(res, "Xóa nhà xuất bản thành công", null);
   } catch (error) {
     next(error);
   }

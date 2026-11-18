@@ -6,6 +6,8 @@ import RoleRoute from "../components/protected/RoleRoute";
 import MainLayout from "../components/layout/MainLayout";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import UserManagement from "../pages/admin/UserManagement";
+import BookManagement from "../pages/admin/BookManagement";
+import PublisherManagement from "../pages/admin/PublisherManagement";
 
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
@@ -28,11 +30,8 @@ const AppRoutes = () => {
             <Route element={<RoleRoute allowedRoles={["admin"]} />}>
               <Route path="/admin" element={<AdminDashboard />} />
               <Route path="/admin/users" element={<UserManagement />} />
-              <Route path="/admin/books" element={<div>Quản lý sách</div>} />
-              <Route
-                path="/admin/publishers"
-                element={<div>Quản lý nhà xuất bản</div>}
-              />
+              <Route path="/admin/books" element={<BookManagement />} />
+              <Route path="/admin/publishers" element={<PublisherManagement />} />
               <Route
                 path="/admin/reviews"
                 element={<div>Quản lý đánh giá</div>}

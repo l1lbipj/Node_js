@@ -21,4 +21,7 @@ router.get("/:id", userController.getUserById);
 // 3. Cập nhật User
 router.put("/:id", userController.updateUser);
 
+// 4. Xóa User
+router.delete("/:id", userController.deleteUser);
+
 module.exports = router;

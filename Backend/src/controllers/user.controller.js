@@ -247,8 +247,64 @@ const updateUser = async (req, res, next) => {
   }
 };
 
+const deleteUser = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return errorResponse(res, "User ID không hợp lệ", 400);
+    }
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      return errorResponse(res, "Không tìm thấy người dùng", 404);
+    }
+
+    // Không cho Admin tự xóa tài khoản của mình
+    if (user._id.toString() === req.user._id.toString()) {
+      return errorResponse(
+        res,
+        "Bạn không thể xóa tài khoản đang đăng nhập",
+        403
+      );
+    }
+
+    // Bảo vệ Admin cuối cùng đang hoạt động
+    if (user.role === "admin" && user.status === "active") {
+      const activeAdminCount = await User.countDocuments({
+        role: "admin",
+        status: "active",
+      });
+
+      if (activeAdminCount <= 1) {
+        return errorResponse(
+          res,
+          "Không thể xóa Admin cuối cùng đang hoạt động",
+          400
+        );
+      }
+    }
+
+    // Xóa User
+    await User.deleteOne({ _id: id });
+
+    return successResponse(
+      res,
+      "Xóa người dùng thành công",
+      {
+        userId: id,
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   updateUser,
+  deleteUser,
 };

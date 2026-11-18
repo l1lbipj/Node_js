@@ -21,6 +21,7 @@ import {
   EditOutlined,
   EyeOutlined,
   UserOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import useAuth from "../../hooks/useAuth";
 import userService from "../../services/userService";
@@ -79,8 +80,7 @@ const UserManagement = () => {
       });
     } catch (error) {
       message.error(
-        error.response?.data?.message ||
-          "Không thể lấy danh sách người dùng"
+        error.response?.data?.message || "Không thể lấy danh sách người dùng",
       );
     } finally {
       setLoading(false);
@@ -122,8 +122,7 @@ const UserManagement = () => {
       setSelectedUser(response.data);
     } catch (error) {
       message.error(
-        error.response?.data?.message ||
-          "Không thể lấy thông tin người dùng"
+        error.response?.data?.message || "Không thể lấy thông tin người dùng",
       );
       setDetailVisible(false);
     } finally {
@@ -174,6 +173,44 @@ const UserManagement = () => {
     }
   };
 
+  // Xóa User
+  const handleDeleteUser = (record) => {
+    // Không cho Admin tự xóa tài khoản của mình
+    if (record._id === user?._id) {
+      message.warning("Bạn không thể xóa tài khoản đang đăng nhập");
+      return;
+    }
+
+    Modal.confirm({
+      title: "Xác nhận xóa người dùng",
+      content: (
+        <>
+          Bạn có chắc chắn muốn xóa tài khoản <strong>{record.fullName}</strong>{" "}
+          ({record.email})?
+          <br />
+          Hành động này không thể hoàn tác.
+        </>
+      ),
+      okText: "Xóa",
+      cancelText: "Hủy",
+      okType: "danger",
+      onOk: async () => {
+        try {
+          await userService.deleteUser(token, record._id);
+
+          message.success("Xóa người dùng thành công");
+
+          // Tải lại danh sách sau khi xóa
+          fetchUsers(pagination.current, pagination.pageSize);
+        } catch (error) {
+          message.error(
+            error.response?.data?.message || "Xóa người dùng thất bại",
+          );
+        }
+      },
+    });
+  };
+
   // Chuyển đổi Role
   const getRoleTag = (role) => {
     const roleConfig = {
@@ -215,19 +252,12 @@ const UserManagement = () => {
       key: "user",
       render: (_, record) => (
         <Space>
-          <Avatar
-            src={record.avatar}
-            icon={<UserOutlined />}
-          />
+          <Avatar src={record.avatar} icon={<UserOutlined />} />
 
           <div>
-            <div style={{ fontWeight: 500 }}>
-              {record.fullName}
-            </div>
+            <div style={{ fontWeight: 500 }}>{record.fullName}</div>
 
-            <Typography.Text type="secondary">
-              {record.email}
-            </Typography.Text>
+            <Typography.Text type="secondary">{record.email}</Typography.Text>
           </div>
         </Space>
       ),
@@ -249,9 +279,7 @@ const UserManagement = () => {
       dataIndex: "createdAt",
       key: "createdAt",
       render: (date) =>
-        date
-          ? new Date(date).toLocaleDateString("vi-VN")
-          : "—",
+        date ? new Date(date).toLocaleDateString("vi-VN") : "—",
     },
     {
       title: "Thao tác",
@@ -272,6 +300,15 @@ const UserManagement = () => {
             onClick={() => handleEditUser(record)}
           >
             Sửa
+          </Button>
+
+          <Button
+            danger
+            icon={<DeleteOutlined />}
+            disabled={record._id === user?._id}
+            onClick={() => handleDeleteUser(record)}
+          >
+            Xóa
           </Button>
         </Space>
       ),
@@ -494,6 +531,6 @@ const UserManagement = () => {
       </Modal>
     </div>
   );
-};
+};;
 
 export default UserManagement;
