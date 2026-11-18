@@ -109,10 +109,9 @@ const getDashboardStats = async (req, res) => {
 
     // Rating trung bình
     const avgRating =
-      averageRating.length > 0
+      averageRating.length > 0 && averageRating[0].averageRating != null
         ? Number(averageRating[0].averageRating.toFixed(2))
         : 0;
-
     const dashboardStats = {
       overview: {
         totalUsers,
