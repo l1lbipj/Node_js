@@ -7,6 +7,7 @@ const {
   logout,
   redirectToGoogle,
   googleCallback,
+  getMe,
 } = require("../controllers/auth.Controller");
 
 const authMiddleware = require("../middlewares/authMiddleware");
@@ -20,6 +21,8 @@ router.get("/google", redirectToGoogle);
 router.get("/google/callback", googleCallback);
 
 // Protected Routes
+router.post("/logout", authMiddleware, logout);
+router.get("/me", authMiddleware, getMe);
 router.post("/logout", authMiddleware, logout);
 
 module.exports = router;

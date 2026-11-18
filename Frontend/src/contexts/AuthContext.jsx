@@ -48,6 +48,23 @@ export const AuthProvider = ({ children }) => {
     return result;
   };
 
+const googleLoginCallback = async (googleToken) => {
+  const result = await authService.getMe(googleToken);
+
+  if (result.success) {
+    const userData = result.data;
+
+    storage.setToken(googleToken);
+    storage.setUser(userData);
+
+    setToken(googleToken);
+    setUser(userData);
+  }
+
+  return result;
+};
+
+
   // Đăng ký
   const register = async (userData) => {
     return await authService.register(userData);
@@ -78,6 +95,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     isAuthenticated: Boolean(token && user),
     login,
+    googleLoginCallback,
     register,
     logout,
     updateUser,

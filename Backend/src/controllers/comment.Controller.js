@@ -490,6 +490,119 @@ const resolveCommentReport = async (req, res, next) => {
     }
   }
 };
+// ========================================
+// ADMIN COMMENT MANAGEMENT
+// ========================================
+
+// Admin lấy danh sách toàn bộ Comment
+const getAllComments = async (req, res, next) => {
+  try {
+    const {
+      search,
+      targetType,
+      targetId,
+      userId,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const filter = {};
+
+    // Tìm kiếm theo nội dung Comment
+    if (search) {
+      filter.content = {
+        $regex: search.trim(),
+        $options: "i",
+      };
+    }
+
+    // Lọc theo loại nội dung
+    if (targetType) {
+      filter.targetType = targetType;
+    }
+
+    // Lọc theo nội dung mục tiêu
+    if (targetId) {
+      if (!mongoose.Types.ObjectId.isValid(targetId)) {
+        return errorResponse(res, "targetId không hợp lệ", 400);
+      }
+
+      filter.targetId = targetId;
+    }
+
+    // Lọc theo người tạo Comment
+    if (userId) {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return errorResponse(res, "userId không hợp lệ", 400);
+      }
+
+      filter.userId = userId;
+    }
+
+    const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
+    const limitNumber = Math.min(
+      Math.max(parseInt(limit, 10) || 10, 1),
+      100,
+    );
+
+    const skip = (pageNumber - 1) * limitNumber;
+
+    const [comments, totalComments] = await Promise.all([
+      Comment.find(filter)
+        .populate("userId", "fullName email avatar role")
+        .populate("parentCommentId", "content userId")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limitNumber),
+
+      Comment.countDocuments(filter),
+    ]);
+
+    return successResponse(
+      res,
+      "Lấy danh sách Comment thành công",
+      {
+        comments,
+        pagination: {
+          totalComments,
+          currentPage: pageNumber,
+          totalPages: Math.ceil(totalComments / limitNumber),
+          limit: limitNumber,
+        },
+      },
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin xem chi tiết Comment
+const getAdminCommentById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return errorResponse(res, "Comment ID không hợp lệ", 400);
+    }
+
+    const comment = await Comment.findById(id)
+      .populate("userId", "fullName email avatar role")
+      .populate("parentCommentId", "content userId createdAt")
+      .populate("targetId");
+
+    if (!comment) {
+      return errorResponse(res, "Không tìm thấy Comment", 404);
+    }
+
+    return successResponse(
+      res,
+      "Lấy thông tin Comment thành công",
+      comment,
+    );
+  } catch (error) {
+    next(error);
+  }
+};
 
 module.exports = {
   createComment,
@@ -499,4 +612,6 @@ module.exports = {
   deleteComment,
   createCommentReport,
   resolveCommentReport,
+  getAllComments,
+  getAdminCommentById,
 };

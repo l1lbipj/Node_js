@@ -520,10 +520,162 @@ const deleteReview = async (req, res, next) => {
   }
 };
 
+// 6. Admin: Lấy toàn bộ Review
+const getAllReviews = async (req, res, next) => {
+  try {
+    const {
+      search = "",
+      rating,
+      bookId,
+      userId,
+      page = 1,
+      limit = 10,
+    } = req.query;
+
+    const currentPage = Number(page);
+    const pageLimit = Number(limit);
+
+    // Kiểm tra phân trang
+    if (
+      !Number.isInteger(currentPage) ||
+      currentPage < 1 ||
+      !Number.isInteger(pageLimit) ||
+      pageLimit < 1 ||
+      pageLimit > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Thông tin phân trang không hợp lệ",
+        errors: [],
+      });
+    }
+
+    // Tạo điều kiện tìm kiếm
+    const filter = {};
+
+    if (search.trim()) {
+      filter.comment = {
+        $regex: search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        $options: "i",
+      };
+    }
+
+    // Lọc theo Rating
+    if (rating !== undefined) {
+      const ratingValue = Number(rating);
+
+      if (
+        !Number.isInteger(ratingValue) ||
+        ratingValue < 1 ||
+        ratingValue > 5
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Rating phải là số nguyên từ 1 đến 5",
+          errors: [],
+        });
+      }
+
+      filter.rating = ratingValue;
+    }
+
+    // Lọc theo Book ID
+    if (bookId !== undefined) {
+      if (!mongoose.Types.ObjectId.isValid(bookId)) {
+        return res.status(400).json({
+          success: false,
+          message: "Book ID không hợp lệ",
+          errors: [],
+        });
+      }
+
+      filter.bookId = bookId;
+    }
+
+    // Lọc theo User ID
+    if (userId !== undefined) {
+      if (!mongoose.Types.ObjectId.isValid(userId)) {
+        return res.status(400).json({
+          success: false,
+          message: "User ID không hợp lệ",
+          errors: [],
+        });
+      }
+
+      filter.userId = userId;
+    }
+
+    // Lấy danh sách Review
+    const reviews = await Review.find(filter)
+      .populate("userId", "fullName email avatar")
+      .populate("bookId", "title coverImage")
+      .sort({ createdAt: -1 })
+      .skip((currentPage - 1) * pageLimit)
+      .limit(pageLimit);
+
+    const totalReviews = await Review.countDocuments(filter);
+
+    return successResponse(
+      res,
+      "Lấy danh sách đánh giá thành công",
+      {
+        reviews,
+        pagination: {
+          totalReviews,
+          currentPage,
+          totalPages: Math.ceil(totalReviews / pageLimit),
+          limit: pageLimit,
+        },
+      }
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// 7. Admin: Lấy chi tiết Review
+const getAdminReviewById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Kiểm tra Review ID
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "ID đánh giá không hợp lệ",
+        errors: [],
+      });
+    }
+
+    // Lấy Review
+    const review = await Review.findById(id)
+      .populate("userId", "fullName email avatar role")
+      .populate("bookId", "title coverImage publisherId");
+
+    if (!review) {
+      return res.status(404).json({
+        success: false,
+        message: "Không tìm thấy đánh giá",
+        errors: [],
+      });
+    }
+
+    return successResponse(
+      res,
+      "Lấy thông tin đánh giá thành công",
+      review
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createReview,
   getReviewsByBook,
   getReviewById,
   updateReview,
   deleteReview,
+  getAllReviews,
+  getAdminReviewById,
 };

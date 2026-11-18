@@ -345,10 +345,43 @@ const logout = async (req, res, next) => {
   }
 };
 
+// GET CURRENT USER
+const getMe = async (req, res, next) => {
+  try {
+    const user = req.user;
+
+    if (!user) {
+      return errorResponse(res, "Không tìm thấy thông tin người dùng", 404);
+    }
+
+    if (user.status !== "active") {
+      return errorResponse(res, "Tài khoản hiện không hoạt động", 403);
+    }
+
+    const userData = {
+      id: user._id,
+      fullName: user.fullName,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+    };
+
+    return successResponse(
+      res,
+      "Lấy thông tin người dùng thành công",
+      userData,
+      200
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
   login,
   logout,
   redirectToGoogle,
   googleCallback,
+  getMe,
 };
