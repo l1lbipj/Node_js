@@ -1,8 +1,12 @@
+
 const mongoose = require("mongoose");
 const Book = require("../models/book.model");
 const Publisher = require("../models/publisher.model");
 const { successResponse } = require("../utils/apiResponse");
 
+// =========================
+// VALIDATE COVER IMAGE
+// =========================
 const isValidCoverImage = (value) => {
   if (typeof value !== "string" || !value.trim()) {
     return false;
@@ -29,17 +33,63 @@ const isValidCoverImage = (value) => {
     imagePath,
   );
 };
+
+// =========================
+// VALIDATE PUBLISH DATE
+// =========================
+const isValidPublishDate = (value) => {
+  if (!value) {
+    return false;
+  }
+
+  const publishDate = new Date(value);
+
+  // Kiểm tra ngày không hợp lệ
+  if (Number.isNaN(publishDate.getTime())) {
+    return false;
+  }
+
+  // So sánh theo ngày, không so sánh giờ
+  const today = new Date();
+
+  const selectedDateOnly = new Date(
+    publishDate.getFullYear(),
+    publishDate.getMonth(),
+    publishDate.getDate(),
+  );
+
+  const todayOnly = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
+
+  // Không cho phép ngày xuất bản trong tương lai
+  return selectedDateOnly <= todayOnly;
+};
+
+// =========================
+// GET ALL BOOKS
+// =========================
 const getAllBooks = async (req, res, next) => {
   try {
     const books = await Book.find()
       .populate("publisherId", "name email")
       .sort({ createdAt: -1 });
 
-    return successResponse(res, "Lấy danh sách sách thành công", books);
+    return successResponse(
+      res,
+      "Lấy danh sách sách thành công",
+      books,
+    );
   } catch (error) {
     next(error);
   }
 };
+
+// =========================
+// GET BOOK BY ID
+// =========================
 const getBookById = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -52,7 +102,10 @@ const getBookById = async (req, res, next) => {
       });
     }
 
-    const book = await Book.findById(id).populate("publisherId", "name email");
+    const book = await Book.findById(id).populate(
+      "publisherId",
+      "name email",
+    );
 
     if (!book) {
       return res.status(404).json({
@@ -62,17 +115,41 @@ const getBookById = async (req, res, next) => {
       });
     }
 
-    return successResponse(res, "Lấy thông tin sách thành công", book);
+    return successResponse(
+      res,
+      "Lấy thông tin sách thành công",
+      book,
+    );
   } catch (error) {
     next(error);
   }
 };
+
+// =========================
+// CREATE BOOK
+// =========================
 const createBook = async (req, res, next) => {
   try {
-    const { title, author, category, description, coverImage, publishDate } =
-      req.body;
+    const {
+      title,
+      author,
+      category,
+      description,
+      coverImage,
+      publishDate,
+    } = req.body;
 
-    // 1. Kiểm tra định dạng ảnh bìa
+    // 1. Kiểm tra ngày xuất bản
+    if (!isValidPublishDate(publishDate)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Ngày xuất bản không hợp lệ hoặc không được nằm trong tương lai",
+        errors: [],
+      });
+    }
+
+    // 2. Kiểm tra định dạng ảnh bìa
     if (!isValidCoverImage(coverImage)) {
       return res.status(400).json({
         success: false,
@@ -80,9 +157,10 @@ const createBook = async (req, res, next) => {
         errors: [],
       });
     }
+
     let publisherId;
 
-    // 1. Xác định Publisher sở hữu sách
+    // 3. Xác định Publisher sở hữu sách
     if (req.user.role === "publisher") {
       const publisher = await Publisher.findOne({
         userId: req.user._id,
@@ -100,7 +178,7 @@ const createBook = async (req, res, next) => {
       publisherId = publisher._id;
     }
 
-    // 2. Admin được chỉ định Publisher sở hữu sách
+    // 4. Admin được chỉ định Publisher sở hữu sách
     else if (req.user.role === "admin") {
       if (!req.body.publisherId) {
         return res.status(400).json({
@@ -118,7 +196,9 @@ const createBook = async (req, res, next) => {
         });
       }
 
-      const publisher = await Publisher.findById(req.body.publisherId);
+      const publisher = await Publisher.findById(
+        req.body.publisherId,
+      );
 
       if (!publisher) {
         return res.status(404).json({
@@ -129,25 +209,40 @@ const createBook = async (req, res, next) => {
       }
 
       publisherId = publisher._id;
+    } else {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền tạo sách",
+        errors: [],
+      });
     }
 
-    // 3. Tạo sách
+    // 5. Tạo sách
     const book = await Book.create({
       title,
       author,
       publisherId,
       category,
       description,
-      coverImage,
-      publishDate,
+      coverImage: coverImage.trim(),
+      publishDate: new Date(publishDate),
     });
 
-    // 4. Trả kết quả
-    return successResponse(res, "Tạo sách thành công", book, 201);
+    // 6. Trả kết quả
+    return successResponse(
+      res,
+      "Tạo sách thành công",
+      book,
+      201,
+    );
   } catch (error) {
     next(error);
   }
 };
+
+// =========================
+// UPDATE BOOK
+// =========================
 const updateBook = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -193,6 +288,12 @@ const updateBook = async (req, res, next) => {
           errors: [],
         });
       }
+    } else if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền cập nhật sách",
+        errors: [],
+      });
     }
 
     // 4. Những trường được phép cập nhật
@@ -212,6 +313,7 @@ const updateBook = async (req, res, next) => {
         updateData[field] = req.body[field];
       }
     });
+
     // 5. Kiểm tra dữ liệu cập nhật
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
@@ -221,7 +323,24 @@ const updateBook = async (req, res, next) => {
       });
     }
 
-    // 6. Kiểm tra định dạng và chuẩn hóa ảnh bìa
+    // 6. Kiểm tra ngày xuất bản nếu có cập nhật
+    if (
+      updateData.publishDate !== undefined &&
+      !isValidPublishDate(updateData.publishDate)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Ngày xuất bản không hợp lệ hoặc không được nằm trong tương lai",
+        errors: [],
+      });
+    }
+
+    if (updateData.publishDate !== undefined) {
+      updateData.publishDate = new Date(updateData.publishDate);
+    }
+
+    // 7. Kiểm tra định dạng và chuẩn hóa ảnh bìa
     if (updateData.coverImage !== undefined) {
       if (!isValidCoverImage(updateData.coverImage)) {
         return res.status(400).json({
@@ -230,9 +349,11 @@ const updateBook = async (req, res, next) => {
           errors: [],
         });
       }
+
       updateData.coverImage = updateData.coverImage.trim();
     }
-    // 7. Cập nhật sách
+
+    // 8. Cập nhật sách
     const updatedBook = await Book.findByIdAndUpdate(
       id,
       { $set: updateData },
@@ -242,11 +363,19 @@ const updateBook = async (req, res, next) => {
       },
     ).populate("publisherId", "name email");
 
-    return successResponse(res, "Cập nhật sách thành công", updatedBook);
+    return successResponse(
+      res,
+      "Cập nhật sách thành công",
+      updatedBook,
+    );
   } catch (error) {
     next(error);
   }
 };
+
+// =========================
+// DELETE BOOK
+// =========================
 const deleteBook = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -292,12 +421,22 @@ const deleteBook = async (req, res, next) => {
           errors: [],
         });
       }
+    } else if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Bạn không có quyền xóa sách",
+        errors: [],
+      });
     }
 
     // 4. Xóa sách
     await Book.findByIdAndDelete(id);
 
-    return successResponse(res, "Xóa sách thành công", { id });
+    return successResponse(
+      res,
+      "Xóa sách thành công",
+      { id },
+    );
   } catch (error) {
     next(error);
   }
