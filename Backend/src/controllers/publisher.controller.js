@@ -122,6 +122,15 @@ const createPublisher = async (req, res, next) => {
       return errorResponse(res, "Tài khoản User phải có quyền Publisher", 400);
     }
 
+    const existingPublisher = await Publisher.findOne({ userId });
+    if (existingPublisher) {
+      return errorResponse(
+        res,
+        "Tài khoản Publisher này đã được liên kết với nhà xuất bản khác",
+        409,
+      );
+    }
+
     // Kiểm tra Email đã tồn tại
     const existingEmail = await Publisher.findOne({
       email: email.trim().toLowerCase(),
