@@ -1,4 +1,3 @@
-
 const TOKEN_KEY = "accessToken";
 const USER_KEY = "user";
 
@@ -20,9 +19,13 @@ const storage = {
 
   // Lấy thông tin người dùng
   getUser: () => {
-    const user = localStorage.getItem(USER_KEY);
-
-    return user ? JSON.parse(user) : null;
+    try {
+      const user = localStorage.getItem(USER_KEY);
+      return user ? JSON.parse(user) : null;
+    } catch (error) {
+      localStorage.removeItem(USER_KEY);
+      return null;
+    }
   },
 
   // Xóa thông tin xác thực

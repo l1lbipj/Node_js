@@ -299,10 +299,15 @@ const updateComment = async (req, res, next) => {
     }
 
     // Chỉ người tạo Comment mới được chỉnh sửa
-    if (comment.userId.toString() !== req.user._id.toString()) {
+    // Admin được xóa mọi Comment.
+// Người dùng khác chỉ được xóa Comment do mình tạo.
+    const isAdmin = req.user.role === "admin";
+    const isOwner = comment.userId.toString() === req.user._id.toString();
+
+    if (!isAdmin && !isOwner) {
       return errorResponse(
         res,
-        "Bạn chỉ được chỉnh sửa bình luận do mình tạo",
+        "Bạn không có quyền xóa bình luận này",
         403,
       );
     }
@@ -509,15 +514,19 @@ const getAllComments = async (req, res, next) => {
     const filter = {};
 
     // Tìm kiếm theo nội dung Comment
-    if (search) {
+    if (typeof search === "string" && search.trim()) {
       filter.content = {
-        $regex: search.trim(),
+        $regex: escapeRegex(search.trim()),
         $options: "i",
       };
     }
 
     // Lọc theo loại nội dung
     if (targetType) {
+      if (!["Review", "ForumTopic"].includes(targetType)) {
+        return errorResponse(res, "Loại nội dung không hợp lệ", 400);
+      }
+
       filter.targetType = targetType;
     }
 

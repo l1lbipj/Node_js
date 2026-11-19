@@ -1,4 +1,3 @@
-
 import { Navigate, Outlet } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
@@ -6,7 +5,13 @@ const RoleRoute = ({ allowedRoles }) => {
   const { user } = useAuth();
 
   if (!user || !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" replace />;
+    const redirectPath = {
+      admin: "/admin",
+      publisher: "/publisher",
+      reader: "/reader",
+    };
+
+    return <Navigate to={redirectPath[user?.role] || "/"} replace />;
   }
 
   return <Outlet />;

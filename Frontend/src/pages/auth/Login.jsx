@@ -1,11 +1,9 @@
-
 import { useState } from "react";
 import { Form, Input, Button, Card, Typography, Alert } from "antd";
-import { MailOutlined, LockOutlined } from "@ant-design/icons";
+import { MailOutlined, LockOutlined, GoogleOutlined } from "@ant-design/icons";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 import authService from "../../services/auth.service";
-import { GoogleOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 
@@ -24,15 +22,46 @@ const Login = () => {
 
       const result = await login(values);
 
-      if (result.success) {
-        const destination = location.state?.from?.pathname || "/";
-        navigate(destination, { replace: true });
+      if (!result?.success) {
+        setError(result?.message || "Đăng nhập thất bại");
+        return;
       }
+
+      // Ưu tiên quay lại trang người dùng đã yêu cầu
+      const previousPath = location.state?.from?.pathname;
+
+      // Nếu không có trang trước, điều hướng theo Role
+      const role = result.data?.user?.role;
+
+      let destination = "/";
+
+      if (previousPath) {
+        destination = previousPath;
+      } else {
+        switch (role) {
+          case "admin":
+            destination = "/admin";
+            break;
+
+          case "publisher":
+            destination = "/publisher";
+            break;
+
+          case "reader":
+            destination = "/reader";
+            break;
+
+          default:
+            destination = "/";
+        }
+      }
+
+      navigate(destination, { replace: true });
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        err.message ||
-        "Đăng nhập thất bại"
+          err.message ||
+          "Đăng nhập thất bại",
       );
     } finally {
       setLoading(false);
@@ -64,7 +93,10 @@ const Login = () => {
             type="error"
             showIcon
             message={error}
-            style={{ marginTop: 20, marginBottom: 20 }}
+            style={{
+              marginTop: 20,
+              marginBottom: 20,
+            }}
           />
         )}
 
@@ -77,8 +109,14 @@ const Login = () => {
             label="Email"
             name="email"
             rules={[
-              { required: true, message: "Vui lòng nhập email" },
-              { type: "email", message: "Email không hợp lệ" },
+              {
+                required: true,
+                message: "Vui lòng nhập email",
+              },
+              {
+                type: "email",
+                message: "Email không hợp lệ",
+              },
             ]}
           >
             <Input
@@ -92,7 +130,10 @@ const Login = () => {
             label="Mật khẩu"
             name="password"
             rules={[
-              { required: true, message: "Vui lòng nhập mật khẩu" },
+              {
+                required: true,
+                message: "Vui lòng nhập mật khẩu",
+              },
             ]}
           >
             <Input.Password
@@ -113,32 +154,48 @@ const Login = () => {
               Đăng nhập
             </Button>
           </Form.Item>
-          <div style={{ marginTop: 16 }}>
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      marginBottom: 16,
-    }}
-  >
-    <div style={{ flex: 1, height: 1, background: "#e8e8e8" }} />
-    <Text type="secondary">Hoặc</Text>
-    <div style={{ flex: 1, height: 1, background: "#e8e8e8" }} />
-  </div>
 
-  <Button
-    block
-    size="large"
-    icon={<GoogleOutlined />}
-    onClick={authService.googleLogin}
-  >
-    Đăng nhập bằng Google
-  </Button>
-</div>
+          {/* Google Login */}
+          <div style={{ marginTop: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: "#e8e8e8",
+                }}
+              />
+
+              <Text type="secondary">Hoặc</Text>
+
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: "#e8e8e8",
+                }}
+              />
+            </div>
+
+            <Button
+              block
+              size="large"
+              icon={<GoogleOutlined />}
+              onClick={authService.googleLogin}
+            >
+              Đăng nhập bằng Google
+            </Button>
+          </div>
         </Form>
 
-        <div style={{ textAlign: "center" }}>
+        <div style={{ textAlign: "center", marginTop: 24 }}>
           <Text>Chưa có tài khoản? </Text>
           <Link to="/register">Đăng ký ngay</Link>
         </div>

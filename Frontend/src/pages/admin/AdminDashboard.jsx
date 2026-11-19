@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+
+import { useCallback, useEffect, useState } from "react";
 import {
   Card,
   Col,
@@ -10,6 +11,9 @@ import {
   Tag,
   Spin,
   Alert,
+  Button,
+  Space,
+  Empty,
 } from "antd";
 
 import {
@@ -21,6 +25,7 @@ import {
   FileTextOutlined,
   FlagOutlined,
   RiseOutlined,
+  ReloadOutlined,
 } from "@ant-design/icons";
 
 import useAuth from "../../hooks/useAuth";
@@ -35,42 +40,45 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // ========================================
-  // LẤY DỮ LIỆU DASHBOARD
-  // ========================================
-  useEffect(() => {
-    const fetchDashboardStats = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  // Lấy dữ liệu Dashboard
+  const fetchDashboardStats = useCallback(async () => {
+    if (!token) {
+      setError("Bạn chưa đăng nhập hoặc phiên đăng nhập đã hết hạn.");
+      setLoading(false);
+      return;
+    }
 
-        const result = await dashboardService.getDashboardStats(token);
+    try {
+      setLoading(true);
+      setError(null);
 
-        if (result.success) {
-          setStats(result.data);
-        } else {
-          setError(result.message || "Không thể lấy dữ liệu Dashboard");
-        }
-      } catch (err) {
-        console.error("Dashboard Error:", err);
+      const result = await dashboardService.getDashboardStats(token);
 
-        setError(
-          err.response?.data?.message ||
-            "Không thể kết nối đến máy chủ"
+      if (!result?.success || !result?.data) {
+        throw new Error(
+          result?.message || "Không thể lấy dữ liệu Dashboard"
         );
-      } finally {
-        setLoading(false);
       }
-    };
 
-    if (token) {
-      fetchDashboardStats();
+      setStats(result.data);
+    } catch (err) {
+      console.error("Dashboard Error:", err);
+
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          "Không thể kết nối đến máy chủ"
+      );
+    } finally {
+      setLoading(false);
     }
   }, [token]);
 
-  // ========================================
-  // LOADING
-  // ========================================
+  useEffect(() => {
+    fetchDashboardStats();
+  }, [fetchDashboardStats]);
+
+  // Loading
   if (loading) {
     return (
       <div
@@ -86,9 +94,7 @@ const AdminDashboard = () => {
     );
   }
 
-  // ========================================
-  // ERROR
-  // ========================================
+  // Error
   if (error) {
     return (
       <div style={{ padding: 24 }}>
@@ -97,68 +103,75 @@ const AdminDashboard = () => {
           description={error}
           type="error"
           showIcon
+          action={
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={fetchDashboardStats}
+            >
+              Thử lại
+            </Button>
+          }
         />
       </div>
     );
   }
 
-  // ========================================
-  // DATA
-  // ========================================
+  // Dữ liệu
   const overview = stats?.overview || {};
   const users = stats?.users || {};
   const reports = stats?.reports || {};
-  const recentActivityLogs = stats?.recentActivityLogs || [];
 
-  // ========================================
-  // STATISTICS CARDS
-  // ========================================
+  const recentActivityLogs = Array.isArray(stats?.recentActivityLogs)
+    ? stats.recentActivityLogs
+    : [];
+
+  // Thống kê tổng quan
   const statisticCards = [
     {
       title: "Tổng người dùng",
-      value: overview.totalUsers || 0,
+      value: overview.totalUsers ?? 0,
       icon: <UserOutlined />,
       color: "#1677ff",
     },
     {
       title: "Tổng sách",
-      value: overview.totalBooks || 0,
+      value: overview.totalBooks ?? 0,
       icon: <BookOutlined />,
       color: "#52c41a",
     },
     {
       title: "Tổng đánh giá",
-      value: overview.totalReviews || 0,
+      value: overview.totalReviews ?? 0,
       icon: <StarOutlined />,
       color: "#faad14",
     },
     {
       title: "Tổng bình luận",
-      value: overview.totalComments || 0,
+      value: overview.totalComments ?? 0,
       icon: <CommentOutlined />,
       color: "#722ed1",
     },
     {
       title: "Nhà xuất bản",
-      value: overview.totalPublishers || 0,
+      value: overview.totalPublishers ?? 0,
       icon: <ShopOutlined />,
       color: "#13c2c2",
     },
     {
       title: "Chủ đề diễn đàn",
-      value: overview.totalForumTopics || 0,
+      value: overview.totalForumTopics ?? 0,
       icon: <FileTextOutlined />,
       color: "#eb2f96",
     },
     {
       title: "Tổng báo cáo",
-      value: overview.totalReports || 0,
+      value: overview.totalReports ?? 0,
       icon: <FlagOutlined />,
       color: "#f5222d",
     },
     {
       title: "Rating trung bình",
-      value: overview.averageRating || 0,
+      value: overview.averageRating ?? 0,
       precision: 2,
       suffix: "/ 5",
       icon: <RiseOutlined />,
@@ -166,71 +179,70 @@ const AdminDashboard = () => {
     },
   ];
 
-  // ========================================
-  // USER ROLE STATISTICS
-  // ========================================
+  // Thống kê người dùng
   const userRoleStats = users.byRole || {};
-
-  const totalUsers = users.total || 0;
+  const totalUsers = users.total ?? overview.totalUsers ?? 0;
 
   const getUserPercentage = (role) => {
     if (!totalUsers) return 0;
 
-    return Math.round(
-      ((userRoleStats[role] || 0) / totalUsers) * 100
+    return Math.min(
+      100,
+      Math.round(((userRoleStats[role] || 0) / totalUsers) * 100)
     );
   };
 
-  // ========================================
-  // REPORT STATISTICS
-  // ========================================
+  // Thống kê báo cáo
   const reportStatusStats = reports.byStatus || {};
-
-  const totalReports = reports.total || 0;
+  const totalReports = reports.total ?? overview.totalReports ?? 0;
 
   const getReportPercentage = (status) => {
     if (!totalReports) return 0;
 
-    return Math.round(
-      ((reportStatusStats[status] || 0) / totalReports) * 100
+    return Math.min(
+      100,
+      Math.round(((reportStatusStats[status] || 0) / totalReports) * 100)
     );
   };
 
-  // ========================================
-  // ACTIVITY LOG TABLE
-  // ========================================
+  // Bảng hoạt động gần đây
   const activityColumns = [
     {
       title: "Người dùng",
       key: "user",
-      render: (_, record) => {
-        return record.userId?.fullName || "Không xác định";
-      },
+      render: (_, record) => (
+        <Space>
+          <UserOutlined />
+          {record.userId?.fullName || "Không xác định"}
+        </Space>
+      ),
     },
     {
       title: "Hoạt động",
       dataIndex: "action",
       key: "action",
+      render: (action) => action || "N/A",
     },
     {
       title: "Loại đối tượng",
       dataIndex: "entityType",
       key: "entityType",
       render: (entityType) => (
-        <Tag color="blue">{entityType}</Tag>
+        <Tag color="blue">{entityType || "N/A"}</Tag>
       ),
     },
     {
       title: "Mô tả",
       dataIndex: "description",
       key: "description",
+      render: (description) => description || "Không có mô tả",
     },
     {
       title: "Thời gian",
       dataIndex: "createdAt",
       key: "createdAt",
       render: (date) =>
-        date
+        date && !Number.isNaN(new Date(date).getTime())
           ? new Date(date).toLocaleString("vi-VN")
           : "Không xác định",
     },
@@ -239,20 +251,37 @@ const AdminDashboard = () => {
   return (
     <div style={{ padding: 24 }}>
       {/* HEADER */}
-      <div style={{ marginBottom: 24 }}>
-        <Title level={2} style={{ marginBottom: 8 }}>
-          Admin Dashboard
-        </Title>
+      <Row
+        justify="space-between"
+        align="middle"
+        gutter={[16, 16]}
+        style={{ marginBottom: 24 }}
+      >
+        <Col>
+          <Title level={2} style={{ marginBottom: 8 }}>
+            Admin Dashboard
+          </Title>
 
-        <Text type="secondary">
-          Tổng quan hoạt động của hệ thống Book Review & Publisher Portal
-        </Text>
-      </div>
+          <Text type="secondary">
+            Tổng quan hoạt động của hệ thống Book Review & Publisher Portal
+          </Text>
+        </Col>
+
+        <Col>
+          <Button
+            icon={<ReloadOutlined />}
+            onClick={fetchDashboardStats}
+            loading={loading}
+          >
+            Làm mới
+          </Button>
+        </Col>
+      </Row>
 
       {/* STATISTICS CARDS */}
       <Row gutter={[16, 16]}>
-        {statisticCards.map((item, index) => (
-          <Col xs={24} sm={12} lg={6} key={index}>
+        {statisticCards.map((item) => (
+          <Col xs={24} sm={12} lg={6} key={item.title}>
             <Card
               bordered={false}
               style={{
@@ -286,34 +315,32 @@ const AdminDashboard = () => {
             bordered={false}
             style={{ borderRadius: 12 }}
           >
-            <div style={{ marginBottom: 24 }}>
-              <Text strong>Admin ({userRoleStats.admin || 0})</Text>
+            {["admin", "reader", "publisher"].map((role) => {
+              const roleLabels = {
+                admin: "Admin",
+                reader: "Reader",
+                publisher: "Publisher",
+              };
 
-              <Progress
-                percent={getUserPercentage("admin")}
-                strokeColor="#1677ff"
-              />
-            </div>
+              const roleColors = {
+                admin: "#1677ff",
+                reader: "#52c41a",
+                publisher: "#faad14",
+              };
 
-            <div style={{ marginBottom: 24 }}>
-              <Text strong>Reader ({userRoleStats.reader || 0})</Text>
+              return (
+                <div key={role} style={{ marginBottom: 24 }}>
+                  <Text strong>
+                    {roleLabels[role]} ({userRoleStats[role] || 0})
+                  </Text>
 
-              <Progress
-                percent={getUserPercentage("reader")}
-                strokeColor="#52c41a"
-              />
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <Text strong>
-                Publisher ({userRoleStats.publisher || 0})
-              </Text>
-
-              <Progress
-                percent={getUserPercentage("publisher")}
-                strokeColor="#faad14"
-              />
-            </div>
+                  <Progress
+                    percent={getUserPercentage(role)}
+                    strokeColor={roleColors[role]}
+                  />
+                </div>
+              );
+            })}
           </Card>
         </Col>
 
@@ -324,38 +351,32 @@ const AdminDashboard = () => {
             bordered={false}
             style={{ borderRadius: 12 }}
           >
-            <div style={{ marginBottom: 24 }}>
-              <Text strong>
-                Pending ({reportStatusStats.pending || 0})
-              </Text>
+            {["pending", "resolved", "rejected"].map((status) => {
+              const statusLabels = {
+                pending: "Đang chờ xử lý",
+                resolved: "Đã giải quyết",
+                rejected: "Đã từ chối",
+              };
 
-              <Progress
-                percent={getReportPercentage("pending")}
-                strokeColor="#faad14"
-              />
-            </div>
+              const statusColors = {
+                pending: "#faad14",
+                resolved: "#52c41a",
+                rejected: "#ff4d4f",
+              };
 
-            <div style={{ marginBottom: 24 }}>
-              <Text strong>
-                Resolved ({reportStatusStats.resolved || 0})
-              </Text>
+              return (
+                <div key={status} style={{ marginBottom: 24 }}>
+                  <Text strong>
+                    {statusLabels[status]} ({reportStatusStats[status] || 0})
+                  </Text>
 
-              <Progress
-                percent={getReportPercentage("resolved")}
-                strokeColor="#52c41a"
-              />
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <Text strong>
-                Rejected ({reportStatusStats.rejected || 0})
-              </Text>
-
-              <Progress
-                percent={getReportPercentage("rejected")}
-                strokeColor="#ff4d4f"
-              />
-            </div>
+                  <Progress
+                    percent={getReportPercentage(status)}
+                    strokeColor={statusColors[status]}
+                  />
+                </div>
+              );
+            })}
           </Card>
         </Col>
       </Row>
@@ -373,10 +394,15 @@ const AdminDashboard = () => {
           columns={activityColumns}
           dataSource={recentActivityLogs}
           rowKey="_id"
-          pagination={false}
+          pagination={{
+            pageSize: 10,
+            showSizeChanger: false,
+          }}
           scroll={{ x: 800 }}
           locale={{
-            emptyText: "Chưa có hoạt động nào",
+            emptyText: (
+              <Empty description="Chưa có hoạt động nào" />
+            ),
           }}
         />
       </Card>

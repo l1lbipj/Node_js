@@ -4,11 +4,18 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import ProtectedRoute from "../components/protected/ProtectedRoute";
 import RoleRoute from "../components/protected/RoleRoute";
 import MainLayout from "../components/layout/MainLayout";
+
+// Admin Pages
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import UserManagement from "../pages/admin/UserManagement";
 import BookManagement from "../pages/admin/BookManagement";
 import PublisherManagement from "../pages/admin/PublisherManagement";
+import ReviewManagement from "../pages/admin/ReviewManagement";
+import CommentManagement from "../pages/admin/CommentManagement";
+import ReportManagement from "../pages/admin/ReportManagement";
+import LogManagement from "../pages/admin/LogManagement";
 
+// Auth Pages
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import GoogleCallback from "../pages/auth/GoogleCallback";
@@ -21,28 +28,54 @@ const AppRoutes = () => {
         <Route path="/" element={<div>Trang chủ</div>} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="/auth/google/callback" element={<GoogleCallback />} />
+        <Route
+          path="/auth/google/callback"
+          element={<GoogleCallback />}
+        />
 
         {/* Các trang yêu cầu đăng nhập */}
         <Route element={<ProtectedRoute />}>
           <Route element={<MainLayout />}>
             {/* Các trang dành cho Admin */}
             <Route element={<RoleRoute allowedRoles={["admin"]} />}>
-              <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/admin/users" element={<UserManagement />} />
-              <Route path="/admin/books" element={<BookManagement />} />
-              <Route path="/admin/publishers" element={<PublisherManagement />} />
+              <Route
+                path="/admin"
+                element={<AdminDashboard />}
+              />
+
+              <Route
+                path="/admin/users"
+                element={<UserManagement />}
+              />
+
+              <Route
+                path="/admin/books"
+                element={<BookManagement />}
+              />
+
+              <Route
+                path="/admin/publishers"
+                element={<PublisherManagement />}
+              />
+
               <Route
                 path="/admin/reviews"
-                element={<div>Quản lý đánh giá</div>}
+                element={<ReviewManagement />}
               />
+
               <Route
                 path="/admin/comments"
-                element={<div>Quản lý bình luận</div>}
+                element={<CommentManagement />}
               />
+
               <Route
                 path="/admin/reports"
-                element={<div>Quản lý báo cáo</div>}
+                element={<ReportManagement />}
+              />
+
+              <Route
+                path="/admin/logs"
+                element={<LogManagement />}
               />
             </Route>
 
@@ -65,7 +98,10 @@ const AppRoutes = () => {
         </Route>
 
         {/* Trang không tìm thấy */}
-        <Route path="*" element={<div>404 - Không tìm thấy trang</div>} />
+        <Route
+          path="*"
+          element={<div>404 - Không tìm thấy trang</div>}
+        />
       </Routes>
     </BrowserRouter>
   );

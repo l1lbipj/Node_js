@@ -1,10 +1,10 @@
-
 import { Avatar, Button, Dropdown, Layout, Space, Typography } from "antd";
 import {
   UserOutlined,
   LogoutOutlined,
   DownOutlined,
 } from "@ant-design/icons";
+import { useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
 const { Header: AntHeader } = Layout;
@@ -12,9 +12,22 @@ const { Text, Title } = Typography;
 
 const Header = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Lỗi đăng xuất:", error);
+    } finally {
+      navigate("/login", { replace: true });
+    }
+  };
+
+  const roleLabels = {
+    admin: "Quản trị viên",
+    publisher: "Nhà xuất bản",
+    reader: "Độc giả",
   };
 
   const menuItems = [
@@ -88,7 +101,7 @@ const Header = () => {
                 type="secondary"
                 style={{ fontSize: 12, lineHeight: 1.4 }}
               >
-                {user?.role || ""}
+                {roleLabels[user?.role] || user?.role || ""}
               </Text>
             </div>
 

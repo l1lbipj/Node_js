@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Table,
   Button,
@@ -9,7 +10,6 @@ import {
   Form,
   Input as AntInput,
   DatePicker,
-  Upload,
   Image,
   Tag,
   Typography,
@@ -53,6 +53,7 @@ const BookManagement = () => {
 
   const [loading, setLoading] = useState(false);
   const [publisherLoading, setPublisherLoading] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const [searchText, setSearchText] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -72,28 +73,47 @@ const BookManagement = () => {
   // =========================
   // FETCH BOOKS
   // =========================
-  const fetchBooks = async () => {
+  const fetchBooks = useCallback(async () => {
     try {
       setLoading(true);
 
       const response = await bookService.getAllBooks();
 
-      const bookData = response?.data;
+      // Hỗ trợ các cấu trúc response thường gặp:
+      // { data: [...] }
+      // { data: { books: [...] } }
+      // { data: { data: { books: [...] } } }
+      const bookData = Array.isArray(response?.data)
+        ? response.data
+        : Array.isArray(response?.data?.books)
+          ? response.data.books
+          : Array.isArray(response?.data?.data?.books)
+            ? response.data.data.books
+            : Array.isArray(response?.books)
+              ? response.books
+              : [];
 
-      setBooks(Array.isArray(bookData) ? bookData : []);
+      setBooks(bookData);
     } catch (error) {
+      console.error("Fetch Books Error:", error);
       message.error(
         error.response?.data?.message || "Không thể tải danh sách sách",
       );
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // =========================
   // FETCH PUBLISHERS
   // =========================
-  const fetchPublishers = async () => {
+  const fetchPublishers = useCallback(async () => {
+    if (!token) {
+      setPublishers([]);
+      setPublisherLoading(false);
+      return;
+    }
+
     try {
       setPublisherLoading(true);
 
@@ -107,12 +127,15 @@ const BookManagement = () => {
         },
       });
 
-      const publisherData = response?.data?.data?.publishers;
+      const publisherData = response?.data?.data?.publishers
+        ?? response?.data?.publishers
+        ?? response?.data?.data;
 
       setPublishers(
         Array.isArray(publisherData) ? publisherData : [],
       );
     } catch (error) {
+      console.error("Fetch Publishers Error:", error);
       message.error(
         error.response?.data?.message ||
           "Không thể tải danh sách nhà xuất bản",
@@ -120,15 +143,23 @@ const BookManagement = () => {
     } finally {
       setPublisherLoading(false);
     }
-  };
+  }, [token]);
 
-  // =========================
-  // INITIAL LOAD
-  // =========================
+  // Chỉ tải dữ liệu một lần theo đúng dependency
   useEffect(() => {
     fetchBooks();
+  }, [fetchBooks]);
+
+  useEffect(() => {
     fetchPublishers();
-  }, []);
+  }, [fetchPublishers]);
+
+  // =========================
+  // REFRESH
+  // =========================
+  const handleRefresh = async () => {
+    await Promise.all([fetchBooks(), fetchPublishers()]);
+  };
 
   // =========================
   // CATEGORY OPTIONS
@@ -138,7 +169,9 @@ const BookManagement = () => {
       Array.isArray(book.category) ? book.category : [],
     );
 
-    return [...new Set(categories)].map((category) => ({
+    return [...new Set(categories.filter(
+      (category) => typeof category === "string" && category.trim(),
+    ))].map((category) => ({
       label: category,
       value: category,
     }));
@@ -151,26 +184,35 @@ const BookManagement = () => {
     return books.filter((book) => {
       const search = searchText.trim().toLowerCase();
 
-      const titleMatch = book.title?.toLowerCase().includes(search);
+      const titleMatch =
+        typeof book.title === "string" &&
+        book.title.toLowerCase().includes(search);
 
-      const authorMatch = Array.isArray(book.author)
-        ? book.author.some((author) =>
-            author.toLowerCase().includes(search),
-          )
-        : false;
+      const authors = Array.isArray(book.author)
+        ? book.author
+        : typeof book.author === "string"
+          ? [book.author]
+          : [];
+
+      const authorMatch = authors.some(
+        (author) =>
+          typeof author === "string" &&
+          author.toLowerCase().includes(search),
+      );
 
       const searchMatch = !search || titleMatch || authorMatch;
 
       const categoryMatch =
         !selectedCategory ||
-        book.category?.includes(selectedCategory);
+        (Array.isArray(book.category) &&
+          book.category.includes(selectedCategory));
 
       const publisherId =
         book.publisherId?._id || book.publisherId;
 
       const publisherMatch =
         !selectedPublisher ||
-        publisherId === selectedPublisher;
+        String(publisherId || "") === String(selectedPublisher);
 
       return searchMatch && categoryMatch && publisherMatch;
     });
@@ -182,11 +224,16 @@ const BookManagement = () => {
   const paginatedBooks = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
 
-    return filteredBooks.slice(
-      startIndex,
-      startIndex + pageSize,
-    );
+    return filteredBooks.slice(startIndex, startIndex + pageSize);
   }, [filteredBooks, currentPage]);
+
+  useEffect(() => {
+    const totalPages = Math.ceil(filteredBooks.length / pageSize);
+
+    if (currentPage > totalPages) {
+      setCurrentPage(Math.max(totalPages, 1));
+    }
+  }, [filteredBooks.length, currentPage]);
 
   // =========================
   // OPEN CREATE MODAL
@@ -215,17 +262,16 @@ const BookManagement = () => {
     setEditingBook(book);
 
     form.setFieldsValue({
-      title: book.title,
+      title: book.title || "",
       author: Array.isArray(book.author)
         ? book.author.join(", ")
-        : book.author,
+        : book.author || "",
       category: Array.isArray(book.category)
         ? book.category.join(", ")
-        : book.category,
-      description: book.description,
-      coverImage: book.coverImage,
-      publisherId:
-        book.publisherId?._id || book.publisherId,
+        : book.category || "",
+      description: book.description || "",
+      coverImage: book.coverImage || "",
+      publisherId: book.publisherId?._id || book.publisherId || undefined,
       publishDate: book.publishDate
         ? dayjs(book.publishDate)
         : null,
@@ -235,33 +281,59 @@ const BookManagement = () => {
   };
 
   // =========================
+  // CLOSE FORM MODAL
+  // =========================
+  const handleCloseFormModal = () => {
+    setIsFormModalOpen(false);
+    setEditingBook(null);
+    form.resetFields();
+  };
+
+  // =========================
   // CREATE / UPDATE BOOK
   // =========================
   const handleSubmitBook = async (values) => {
     try {
+      if (!token) {
+        message.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+        return;
+      }
+
+      if (!values.publishDate || !dayjs(values.publishDate).isValid()) {
+        message.error("Ngày xuất bản không hợp lệ");
+        return;
+      }
+
+      if (dayjs(values.publishDate).isAfter(dayjs(), "day")) {
+        message.error("Ngày xuất bản không được lớn hơn ngày hiện tại");
+        return;
+      }
+
       const bookData = {
         title: values.title.trim(),
-
         author: values.author
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
-
         category: values.category
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
-
         description: values.description.trim(),
-
         coverImage: values.coverImage.trim(),
-
-        publisherId: values.publisherId,
-
-        publishDate: values.publishDate.toISOString(),
+        publishDate: values.publishDate.toDate(),
       };
 
+      if (
+        bookData.author.length === 0 ||
+        bookData.category.length === 0
+      ) {
+        message.error("Vui lòng nhập tác giả và thể loại hợp lệ");
+        return;
+      }
+
       if (editingBook) {
+        // Backend hiện không cho phép cập nhật publisherId.
         await bookService.updateBook(
           token,
           editingBook._id,
@@ -270,16 +342,23 @@ const BookManagement = () => {
 
         message.success("Cập nhật sách thành công");
       } else {
-        await bookService.createBook(token, bookData);
+        if (!values.publisherId) {
+          message.error("Vui lòng chọn nhà xuất bản");
+          return;
+        }
+
+        await bookService.createBook(token, {
+          ...bookData,
+          publisherId: values.publisherId,
+        });
 
         message.success("Thêm sách thành công");
       }
 
-      setIsFormModalOpen(false);
-      form.resetFields();
-
+      handleCloseFormModal();
       await fetchBooks();
     } catch (error) {
+      console.error("Save Book Error:", error);
       message.error(
         error.response?.data?.message ||
           "Có lỗi xảy ra khi lưu thông tin sách",
@@ -292,12 +371,20 @@ const BookManagement = () => {
   // =========================
   const handleDeleteBook = async (bookId) => {
     try {
+      if (!token) {
+        message.error("Phiên đăng nhập đã hết hạn");
+        return;
+      }
+
       await bookService.deleteBook(token, bookId);
 
       message.success("Xóa sách thành công");
 
+      // Nếu xóa phần tử cuối cùng ở trang hiện tại,
+      // cập nhật phân trang sau khi tải lại dữ liệu.
       await fetchBooks();
     } catch (error) {
+      console.error("Delete Book Error:", error);
       message.error(
         error.response?.data?.message || "Không thể xóa sách",
       );
@@ -308,17 +395,40 @@ const BookManagement = () => {
   // VIEW BOOK DETAIL
   // =========================
   const handleViewBook = async (book) => {
+    setSelectedBook(book);
+    setIsDetailModalOpen(true);
+    setDetailLoading(true);
+
     try {
       const response = await bookService.getBookById(book._id);
 
-      setSelectedBook(response?.data || book);
-      setIsDetailModalOpen(true);
+      const detail =
+        response?.data?.book ||
+        response?.data?.data?.book ||
+        response?.data?.data ||
+        response?.data ||
+        response?.book ||
+        book;
+
+      setSelectedBook(detail && typeof detail === "object" ? detail : book);
     } catch (error) {
+      console.error("Fetch Book Detail Error:", error);
       message.error(
         error.response?.data?.message ||
-          "Không thể tải thông tin sách",
+          "Không thể tải thông tin chi tiết sách",
       );
+    } finally {
+      setDetailLoading(false);
     }
+  };
+
+  // =========================
+  // CLOSE DETAIL MODAL
+  // =========================
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false);
+    setSelectedBook(null);
+    setDetailLoading(false);
   };
 
   // =========================
@@ -343,23 +453,24 @@ const BookManagement = () => {
         />
       ),
     },
-
     {
       title: "Tên sách",
       dataIndex: "title",
       key: "title",
-      render: (title) => <Text strong>{title}</Text>,
+      render: (title) => <Text strong>{title || "Chưa có tên"}</Text>,
     },
-
     {
       title: "Tác giả",
       dataIndex: "author",
       key: "author",
       render: (authors) => (
-        <div>{Array.isArray(authors) ? authors.join(", ") : authors}</div>
+        <div>
+          {Array.isArray(authors)
+            ? authors.join(", ")
+            : authors || "Chưa xác định"}
+        </div>
       ),
     },
-
     {
       title: "Thể loại",
       dataIndex: "category",
@@ -368,35 +479,34 @@ const BookManagement = () => {
         <Space wrap>
           {Array.isArray(categories) &&
             categories.map((category, index) => (
-              <Tag color="blue" key={index}>
+              <Tag color="blue" key={`${category}-${index}`}>
                 {category}
               </Tag>
             ))}
         </Space>
       ),
     },
-
     {
       title: "Nhà xuất bản",
       dataIndex: "publisherId",
       key: "publisher",
-      render: (publisher) => <Text>{publisher?.name || "Không xác định"}</Text>,
+      render: (publisher) => (
+        <Text>{publisher?.name || "Không xác định"}</Text>
+      ),
     },
-
     {
       title: "Đánh giá",
       dataIndex: "averageRating",
       key: "rating",
       align: "center",
-      render: (rating) => (
+      render: (_, record) => (
         <Tag color="gold">
           <StarFilled style={{ color: "#faad14" }} />{" "}
-          {Number(selectedBook?.averageRating || 0).toFixed(1)} (
-          {selectedBook?.totalReview || 0} đánh giá)
+          {Number(record.averageRating || 0).toFixed(1)} (
+          {record.totalReview || 0} đánh giá)
         </Tag>
       ),
     },
-
     {
       title: "Số Reviews",
       dataIndex: "totalReview",
@@ -404,7 +514,6 @@ const BookManagement = () => {
       align: "center",
       render: (total) => total || 0,
     },
-
     {
       title: "Thao tác",
       key: "actions",
@@ -431,9 +540,7 @@ const BookManagement = () => {
             onConfirm={() => handleDeleteBook(record._id)}
             okText="Xóa"
             cancelText="Hủy"
-            okButtonProps={{
-              danger: true,
-            }}
+            okButtonProps={{ danger: true }}
           >
             <Button
               type="text"
@@ -458,7 +565,6 @@ const BookManagement = () => {
           <Title level={3} style={{ margin: 0 }}>
             <BookOutlined /> Book Management
           </Title>
-
           <Text type="secondary">Quản lý danh sách sách trong hệ thống</Text>
         </Col>
 
@@ -466,8 +572,8 @@ const BookManagement = () => {
           <Space>
             <Button
               icon={<ReloadOutlined />}
-              onClick={fetchBooks}
-              loading={loading}
+              onClick={handleRefresh}
+              loading={loading || publisherLoading}
             >
               Làm mới
             </Button>
@@ -488,7 +594,6 @@ const BookManagement = () => {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Text type="secondary">Tổng số sách</Text>
-
             <Title level={2} style={{ margin: "8px 0 0" }}>
               {books.length}
             </Title>
@@ -498,7 +603,6 @@ const BookManagement = () => {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Text type="secondary">Số thể loại</Text>
-
             <Title level={2} style={{ margin: "8px 0 0" }}>
               {categoryOptions.length}
             </Title>
@@ -508,7 +612,6 @@ const BookManagement = () => {
         <Col xs={24} sm={12} lg={8}>
           <Card>
             <Text type="secondary">Nhà xuất bản</Text>
-
             <Title level={2} style={{ margin: "8px 0 0" }}>
               {publishers.length}
             </Title>
@@ -539,7 +642,7 @@ const BookManagement = () => {
               value={selectedCategory}
               options={categoryOptions}
               onChange={(value) => {
-                setSelectedCategory(value);
+                setSelectedCategory(value ?? null);
                 setCurrentPage(1);
               }}
               allowClear
@@ -557,7 +660,7 @@ const BookManagement = () => {
                 value: publisher._id,
               }))}
               onChange={(value) => {
-                setSelectedPublisher(value);
+                setSelectedPublisher(value ?? null);
                 setCurrentPage(1);
               }}
               allowClear
@@ -592,10 +695,7 @@ const BookManagement = () => {
       <Modal
         title={editingBook ? "Chỉnh sửa sách" : "Thêm sách mới"}
         open={isFormModalOpen}
-        onCancel={() => {
-          setIsFormModalOpen(false);
-          form.resetFields();
-        }}
+        onCancel={handleCloseFormModal}
         footer={null}
         width={800}
         destroyOnHidden
@@ -609,11 +709,12 @@ const BookManagement = () => {
                 rules={[
                   {
                     required: true,
+                    whitespace: true,
                     message: "Vui lòng nhập tên sách",
                   },
                 ]}
               >
-                <Input placeholder="Nhập tên sách" />
+                <Input placeholder="Nhập tên sách" maxLength={200} />
               </Form.Item>
             </Col>
 
@@ -624,6 +725,7 @@ const BookManagement = () => {
                 rules={[
                   {
                     required: true,
+                    whitespace: true,
                     message: "Vui lòng nhập tác giả",
                   },
                 ]}
@@ -641,6 +743,7 @@ const BookManagement = () => {
                 rules={[
                   {
                     required: true,
+                    whitespace: true,
                     message: "Vui lòng nhập thể loại",
                   },
                 ]}
@@ -669,6 +772,14 @@ const BookManagement = () => {
                   }))}
                   showSearch
                   optionFilterProp="label"
+                  disabled={Boolean(editingBook)}
+                  notFoundContent={
+                    publisherLoading ? (
+                      <Spin size="small" />
+                    ) : (
+                      "Không có nhà xuất bản"
+                    )
+                  }
                 />
               </Form.Item>
             </Col>
@@ -684,7 +795,13 @@ const BookManagement = () => {
               },
             ]}
           >
-            <DatePicker style={{ width: "100%" }} format="DD/MM/YYYY" />
+            <DatePicker
+              style={{ width: "100%" }}
+              format="DD/MM/YYYY"
+              disabledDate={(current) =>
+                current && current.isAfter(dayjs(), "day")
+              }
+            />
           </Form.Item>
 
           <Form.Item
@@ -693,6 +810,7 @@ const BookManagement = () => {
             rules={[
               {
                 required: true,
+                whitespace: true,
                 message: "Vui lòng nhập URL ảnh bìa",
               },
             ]}
@@ -706,24 +824,23 @@ const BookManagement = () => {
             rules={[
               {
                 required: true,
+                whitespace: true,
                 message: "Vui lòng nhập mô tả sách",
               },
             ]}
           >
-            <TextArea rows={4} placeholder="Nhập mô tả sách..." />
+            <TextArea
+              rows={4}
+              placeholder="Nhập mô tả sách..."
+              maxLength={5000}
+              showCount
+            />
           </Form.Item>
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Row justify="end">
               <Space>
-                <Button
-                  onClick={() => {
-                    setIsFormModalOpen(false);
-                    form.resetFields();
-                  }}
-                >
-                  Hủy
-                </Button>
+                <Button onClick={handleCloseFormModal}>Hủy</Button>
 
                 <Button type="primary" htmlType="submit">
                   {editingBook ? "Cập nhật" : "Thêm sách"}
@@ -738,100 +855,100 @@ const BookManagement = () => {
       <Modal
         title="Chi tiết sách"
         open={isDetailModalOpen}
-        onCancel={() => {
-          setIsDetailModalOpen(false);
-          setSelectedBook(null);
-        }}
+        onCancel={handleCloseDetailModal}
         footer={[
-          <Button key="close" onClick={() => setIsDetailModalOpen(false)}>
+          <Button key="close" onClick={handleCloseDetailModal}>
             Đóng
           </Button>,
         ]}
         width={750}
+        destroyOnHidden
       >
-        {selectedBook && (
-          <Spin spinning={false}>
-            <Row gutter={24}>
-              <Col xs={24} md={8}>
-                <Image
-                  src={selectedBook.coverImage}
-                  width="100%"
-                  style={{
-                    borderRadius: 8,
-                    objectFit: "cover",
-                  }}
-                  fallback="https://placehold.co/300x400?text=Book"
-                />
-              </Col>
+        <Spin spinning={detailLoading}>
+          {selectedBook ? (
+            <>
+              <Row gutter={24}>
+                <Col xs={24} md={8}>
+                  <Image
+                    src={selectedBook.coverImage}
+                    width="100%"
+                    style={{
+                      borderRadius: 8,
+                      objectFit: "cover",
+                    }}
+                    fallback="https://placehold.co/300x400?text=Book"
+                  />
+                </Col>
 
-              <Col xs={24} md={16}>
-                <Title level={4}>{selectedBook.title}</Title>
+                <Col xs={24} md={16}>
+                  <Title level={4}>
+                    {selectedBook.title || "Chưa có tên sách"}
+                  </Title>
 
-                <Text type="secondary">Tác giả: </Text>
+                  <Text type="secondary">Tác giả: </Text>
+                  <Text>
+                    {Array.isArray(selectedBook.author)
+                      ? selectedBook.author.join(", ")
+                      : selectedBook.author || "Không xác định"}
+                  </Text>
 
-                <Text>
-                  {Array.isArray(selectedBook.author)
-                    ? selectedBook.author.join(", ")
-                    : selectedBook.author}
-                </Text>
+                  <br />
+                  <br />
 
-                <br />
-                <br />
+                  <Text type="secondary">Nhà xuất bản: </Text>
+                  <Text>
+                    {selectedBook.publisherId?.name || "Không xác định"}
+                  </Text>
 
-                <Text type="secondary">Nhà xuất bản: </Text>
+                  <br />
+                  <br />
 
-                <Text>
-                  {selectedBook.publisherId?.name || "Không xác định"}
-                </Text>
+                  <Text type="secondary">Thể loại: </Text>
+                  <Space wrap>
+                    {Array.isArray(selectedBook.category) &&
+                      selectedBook.category.map((category, index) => (
+                        <Tag color="blue" key={`${category}-${index}`}>
+                          {category}
+                        </Tag>
+                      ))}
+                  </Space>
 
-                <br />
-                <br />
+                  <br />
+                  <br />
 
-                <Text type="secondary">Thể loại: </Text>
+                  <Text type="secondary">Ngày xuất bản: </Text>
+                  <Text>
+                    {selectedBook.publishDate &&
+                    dayjs(selectedBook.publishDate).isValid()
+                      ? dayjs(selectedBook.publishDate).format("DD/MM/YYYY")
+                      : "Không xác định"}
+                  </Text>
 
-                <Space wrap>
-                  {selectedBook.category?.map((category, index) => (
-                    <Tag color="blue" key={index}>
-                      {category}
-                    </Tag>
-                  ))}
-                </Space>
+                  <br />
+                  <br />
 
-                <br />
-                <br />
+                  <Text type="secondary">Điểm đánh giá: </Text>
+                  <Tag color="gold">
+                    <StarFilled />{" "}
+                    {Number(selectedBook.averageRating || 0).toFixed(1)}
+                  </Tag>
 
-                <Text type="secondary">Ngày xuất bản: </Text>
+                  <br />
+                  <br />
 
-                <Text>
-                  {selectedBook.publishDate
-                    ? dayjs(selectedBook.publishDate).format("DD/MM/YYYY")
-                    : "Không xác định"}
-                </Text>
+                  <Text type="secondary">Tổng Reviews: </Text>
+                  <Text>{selectedBook.totalReview || 0}</Text>
+                </Col>
+              </Row>
 
-                <br />
-                <br />
-
-                <Text type="secondary">Điểm đánh giá: </Text>
-
-                <Tag color="gold">
-                  <StarFilled />{" "}
-                  {Number(selectedBook.averageRating || 0).toFixed(1)}
-                </Tag>
-
-                <br />
-                <br />
-
-                <Text type="secondary">Tổng Reviews: </Text>
-
-                <Text>{selectedBook.totalReview || 0}</Text>
-              </Col>
-            </Row>
-
-            <Card size="small" title="Mô tả sách" style={{ marginTop: 24 }}>
-              <Text>{selectedBook.description || "Chưa có mô tả"}</Text>
-            </Card>
-          </Spin>
-        )}
+              <Card size="small" title="Mô tả sách" style={{ marginTop: 24 }}>
+                <Text>{selectedBook.description || "Chưa có mô tả"}</Text>
+              </Card>
+            </>
+          ) : (
+            <Empty description="Không có dữ liệu sách" />
+          )}
+        </Spin>
       </Modal>
     </div>
   );

@@ -1,4 +1,6 @@
+
 import { Layout, Menu } from "antd";
+
 import {
   DashboardOutlined,
   UserOutlined,
@@ -7,11 +9,9 @@ import {
   StarOutlined,
   CommentOutlined,
   FlagOutlined,
-  ReadOutlined,
-  ProfileOutlined,
-  MessageOutlined,
   HistoryOutlined,
 } from "@ant-design/icons";
+
 import { useLocation, useNavigate } from "react-router-dom";
 import useAuth from "../../hooks/useAuth";
 
@@ -60,12 +60,7 @@ const Sidebar = () => {
         label: "Quản lý báo cáo",
       },
       {
-        key: "/admin/forum",
-        icon: <MessageOutlined />,
-        label: "Quản lý diễn đàn",
-      },
-      {
-        key: "/admin/activity-logs",
+        key: "/admin/logs",
         icon: <HistoryOutlined />,
         label: "Nhật ký hoạt động",
       },
@@ -77,21 +72,6 @@ const Sidebar = () => {
         icon: <DashboardOutlined />,
         label: "Tổng quan",
       },
-      {
-        key: "/publisher/books",
-        icon: <BookOutlined />,
-        label: "Quản lý sách",
-      },
-      {
-        key: "/publisher/reviews",
-        icon: <StarOutlined />,
-        label: "Đánh giá sách",
-      },
-      {
-        key: "/publisher/comments",
-        icon: <CommentOutlined />,
-        label: "Bình luận",
-      },
     ],
 
     reader: [
@@ -100,43 +80,29 @@ const Sidebar = () => {
         icon: <DashboardOutlined />,
         label: "Tổng quan",
       },
-      {
-        key: "/reader/books",
-        icon: <ReadOutlined />,
-        label: "Khám phá sách",
-      },
-      {
-        key: "/reader/reviews",
-        icon: <StarOutlined />,
-        label: "Đánh giá của tôi",
-      },
-      {
-        key: "/reader/comments",
-        icon: <CommentOutlined />,
-        label: "Bình luận của tôi",
-      },
-      {
-        key: "/reader/profile",
-        icon: <ProfileOutlined />,
-        label: "Hồ sơ cá nhân",
-      },
     ],
   };
 
   const menuItems = menuByRole[user?.role] || [];
 
-  // Tìm menu khớp chính xác trước
+  // Tìm menu khớp chính xác
   const exactMatch = menuItems.find(
     (item) => location.pathname === item.key
   );
 
-  // Nếu không khớp chính xác, tìm menu cha gần nhất
+  // Tìm menu cha gần nhất
   const parentMatch = menuItems
-    .filter((item) => location.pathname.startsWith(`${item.key}/`))
+    .filter(
+      (item) =>
+        item.key !== "/" &&
+        location.pathname.startsWith(`${item.key}/`)
+    )
     .sort((a, b) => b.key.length - a.key.length)[0];
 
   const selectedKey =
-    exactMatch?.key || parentMatch?.key || menuItems[0]?.key;
+    exactMatch?.key ||
+    parentMatch?.key ||
+    menuItems[0]?.key;
 
   return (
     <Sider

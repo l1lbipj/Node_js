@@ -1,11 +1,19 @@
+
 const mongoose = require("mongoose");
 const ActivityLog = require("../models/activityLog.model");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 
 // ========================================
+// HELPER: ESCAPE REGEX
+// ========================================
+const escapeRegex = (value) => {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+};
+
+// ========================================
 // ADMIN: LẤY DANH SÁCH ACTIVITY LOG
 // ========================================
-const getAllActivityLogs = async (req, res) => {
+const getAllActivityLogs = async (req, res, next) => {
   try {
     const {
       search,
@@ -19,84 +27,125 @@ const getAllActivityLogs = async (req, res) => {
     const filter = {};
 
     // Tìm kiếm theo description hoặc action
-    if (search) {
+    if (typeof search === "string" && search.trim()) {
+      const keyword = escapeRegex(search.trim());
+
       filter.$or = [
-        { description: { $regex: search, $options: "i" } },
-        { action: { $regex: search, $options: "i" } },
+        {
+          description: {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
+        {
+          action: {
+            $regex: keyword,
+            $options: "i",
+          },
+        },
       ];
     }
 
     // Lọc theo action
-    if (action) {
-      filter.action = { $regex: action, $options: "i" };
+    if (typeof action === "string" && action.trim()) {
+      filter.action = {
+        $regex: escapeRegex(action.trim()),
+        $options: "i",
+      };
     }
 
     // Lọc theo entityType
-    if (entityType) {
-      filter.entityType = entityType;
+    if (typeof entityType === "string" && entityType.trim()) {
+      filter.entityType = entityType.trim();
     }
 
     // Lọc theo userId
     if (userId) {
-      if (!mongoose.Types.ObjectId.isValid(userId)) {
-        return errorResponse(res, "User ID không hợp lệ", 400);
+      if (
+        typeof userId !== "string" ||
+        !mongoose.Types.ObjectId.isValid(userId)
+      ) {
+        return errorResponse(
+          res,
+          "User ID không hợp lệ",
+          400
+        );
       }
 
       filter.userId = userId;
     }
 
-    const currentPage = Math.max(1, Number(page));
-    const currentLimit = Math.min(100, Math.max(1, Number(limit)));
+    // Phân trang
+    const currentPage = Math.max(
+      parseInt(page, 10) || 1,
+      1
+    );
+
+    const currentLimit = Math.min(
+      Math.max(parseInt(limit, 10) || 20, 1),
+      100
+    );
+
     const skip = (currentPage - 1) * currentLimit;
 
+    // Truy vấn danh sách và tổng số bản ghi
     const [activityLogs, total] = await Promise.all([
       ActivityLog.find(filter)
         .populate("userId", "fullName email avatar role")
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(currentLimit),
+        .limit(currentLimit)
+        .lean(),
 
       ActivityLog.countDocuments(filter),
     ]);
 
-    return successResponse(res, "Lấy danh sách nhật ký hoạt động thành công", {
-      activityLogs,
-      pagination: {
-        total,
-        page: currentPage,
-        limit: currentLimit,
-        totalPages: Math.ceil(total / currentLimit),
-      },
-    });
+    return successResponse(
+      res,
+      "Lấy danh sách nhật ký hoạt động thành công",
+      {
+        activityLogs,
+        pagination: {
+          total,
+          page: currentPage,
+          limit: currentLimit,
+          totalPages: Math.ceil(total / currentLimit),
+        },
+      }
+    );
   } catch (error) {
     console.error("Get All Activity Logs Error:", error);
-
-    return errorResponse(
-      res,
-      "Không thể lấy danh sách nhật ký hoạt động",
-      500
-    );
+    next(error);
   }
 };
 
 // ========================================
 // ADMIN: LẤY CHI TIẾT ACTIVITY LOG
 // ========================================
-const getActivityLogById = async (req, res) => {
+const getActivityLogById = async (req, res, next) => {
   try {
     const { id } = req.params;
 
+    // Kiểm tra ID
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      return errorResponse(res, "Activity Log ID không hợp lệ", 400);
+      return errorResponse(
+        res,
+        "Activity Log ID không hợp lệ",
+        400
+      );
     }
 
-    const activityLog = await ActivityLog.findById(id).populate(
-      "userId",
-      "fullName email avatar role"
-    );
+    // Tìm nhật ký
+    const activityLog = await ActivityLog.findById(id)
+      .populate("userId", "fullName email avatar role")
+      .lean();
 
     if (!activityLog) {
-      return errorResponse(res, "Không tìm thấy nhật ký hoạt động", 404);
+      return errorResponse(
+        res,
+        "Không tìm thấy nhật ký hoạt động",
+        404
+      );
     }
 
     return successResponse(
@@ -106,12 +155,7 @@ const getActivityLogById = async (req, res) => {
     );
   } catch (error) {
     console.error("Get Activity Log By ID Error:", error);
-
-    return errorResponse(
-      res,
-      "Không thể lấy chi tiết nhật ký hoạt động",
-      500
-    );
+    next(error);
   }
 };
 
