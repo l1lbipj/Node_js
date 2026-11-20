@@ -19,6 +19,7 @@ import LogManagement from "../pages/admin/LogManagement";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import GoogleCallback from "../pages/auth/GoogleCallback";
+import PublisherDashboard from "../pages/publisher/PublisherDashboard";
 
 const AppRoutes = () => {
   return (
@@ -83,7 +84,7 @@ const AppRoutes = () => {
             <Route element={<RoleRoute allowedRoles={["publisher"]} />}>
               <Route
                 path="/publisher"
-                element={<div>Trang quản lý Publisher</div>}
+                element={<PublisherDashboard />}
               />
             </Route>
 
