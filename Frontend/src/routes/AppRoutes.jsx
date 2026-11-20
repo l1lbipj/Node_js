@@ -9,19 +9,28 @@ import UserManagement from "../pages/admin/UserManagement";
 import BookManagement from "../pages/admin/BookManagement";
 import PublisherManagement from "../pages/admin/PublisherManagement";
 
+import ReaderDashboard from "../pages/reader/ReaderDashboard";
+import ReaderProfile from "../pages/reader/ReaderProfile";
+
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import GoogleCallback from "../pages/auth/GoogleCallback";
+import Home from "../pages/home";
+import Books from "../pages/book/Books";
+import BookDetail from "../pages/book/BookDetail";
 
 const AppRoutes = () => {
   return (
     <BrowserRouter>
       <Routes>
         {/* Các trang công khai */}
-        <Route path="/" element={<div>Trang chủ</div>} />
+        <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/google/callback" element={<GoogleCallback />} />
+        <Route path="/books" element={<Books />} />
+        <Route path="/books/:id" element={<BookDetail />} />
+        
 
         {/* Các trang yêu cầu đăng nhập */}
         <Route element={<ProtectedRoute />}>
@@ -56,10 +65,13 @@ const AppRoutes = () => {
 
             {/* Trang dành cho Reader */}
             <Route element={<RoleRoute allowedRoles={["reader"]} />}>
-              <Route
-                path="/reader"
-                element={<div>Trang dành cho Reader</div>}
-              />
+              <Route path="/reader/home" element={<Home />} />
+              <Route path="/reader" element={<ReaderDashboard />} />
+              <Route path="/reader/profile" element={<ReaderProfile />} />
+              <Route path="/reader/books" element={<div>Khám phá sách</div>} />
+              <Route path="/reader/reviews" element={<div>Đánh giá của tôi</div>} />
+              <Route path="/reader/comments" element={<div>Bình luận của tôi</div>} />
+              <Route path="/reader/topics" element={<div>Diễn đàn của tôi</div>} />
             </Route>
           </Route>
         </Route>

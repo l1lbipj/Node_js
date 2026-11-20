@@ -1,11 +1,22 @@
-
 import { useState } from "react";
-import { Form, Input, Button, Card, Typography, Alert } from "antd";
-import { MailOutlined, LockOutlined } from "@ant-design/icons";
+import {
+  Form,
+  Input,
+  Button,
+  Card,
+  Typography,
+  Alert,
+  notification,
+} from "antd";
+import {
+  MailOutlined,
+  LockOutlined,
+  GoogleOutlined,
+} from "@ant-design/icons";
 import { Link, useNavigate, useLocation } from "react-router-dom";
+
 import useAuth from "../../hooks/useAuth";
 import authService from "../../services/auth.service";
-import { GoogleOutlined } from "@ant-design/icons";
 
 const { Title, Text } = Typography;
 
@@ -25,14 +36,35 @@ const Login = () => {
       const result = await login(values);
 
       if (result.success) {
-        const destination = location.state?.from?.pathname || "/";
+        const loggedInUser = result.data.user;
+
+        // Điều hướng theo vai trò người dùng
+        const defaultDestination = {
+          admin: "/admin",
+          publisher: "/publisher",
+          reader: "/",
+        };
+
+        // Ưu tiên role để Admin luôn vào Dashboard
+        const destination =
+          defaultDestination[loggedInUser?.role] ||
+          location.state?.from?.pathname ||
+          "/";
+
+        notification.success({
+          message: `Chào mừng ${loggedInUser?.fullName || "bạn"}!`,
+          description: "Bạn đã đăng nhập thành công vào Book Nest.",
+          placement: "topRight",
+          duration: 3,
+        });
+
         navigate(destination, { replace: true });
       }
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        err.message ||
-        "Đăng nhập thất bại"
+          err.message ||
+          "Đăng nhập thất bại"
       );
     } finally {
       setLoading(false);
@@ -113,29 +145,44 @@ const Login = () => {
               Đăng nhập
             </Button>
           </Form.Item>
-          <div style={{ marginTop: 16 }}>
-  <div
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 12,
-      marginBottom: 16,
-    }}
-  >
-    <div style={{ flex: 1, height: 1, background: "#e8e8e8" }} />
-    <Text type="secondary">Hoặc</Text>
-    <div style={{ flex: 1, height: 1, background: "#e8e8e8" }} />
-  </div>
 
-  <Button
-    block
-    size="large"
-    icon={<GoogleOutlined />}
-    onClick={authService.googleLogin}
-  >
-    Đăng nhập bằng Google
-  </Button>
-</div>
+          <div style={{ marginTop: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: "#e8e8e8",
+                }}
+              />
+
+              <Text type="secondary">Hoặc</Text>
+
+              <div
+                style={{
+                  flex: 1,
+                  height: 1,
+                  background: "#e8e8e8",
+                }}
+              />
+            </div>
+
+            <Button
+              block
+              size="large"
+              icon={<GoogleOutlined />}
+              onClick={authService.googleLogin}
+            >
+              Đăng nhập bằng Google
+            </Button>
+          </div>
         </Form>
 
         <div style={{ textAlign: "center" }}>
