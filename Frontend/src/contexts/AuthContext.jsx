@@ -1,4 +1,3 @@
-
 import { createContext, useState, useEffect } from "react";
 import authService from "../services/auth.service";
 import storage from "../utils/storage";
@@ -10,22 +9,43 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(() => storage.getToken());
   const [loading, setLoading] = useState(true);
 
-  // Khởi tạo trạng thái đăng nhập
+  // Khởi tạo và xác thực trạng thái đăng nhập
   useEffect(() => {
-    const initializeAuth = () => {
+    const initializeAuth = async () => {
       const savedToken = storage.getToken();
       const savedUser = storage.getUser();
 
-      if (savedToken && savedUser) {
-        setToken(savedToken);
-        setUser(savedUser);
-      } else {
+      if (!savedToken || !savedUser) {
         storage.clearAuth();
         setToken(null);
         setUser(null);
+        setLoading(false);
+        return;
       }
 
-      setLoading(false);
+      try {
+        // Kiểm tra token với Backend
+        const result = await authService.getMe(savedToken);
+
+        if (result.success && result.data) {
+          // Cập nhật thông tin user mới nhất
+          storage.setUser(result.data);
+          setUser(result.data);
+          setToken(savedToken);
+        } else {
+          // Token không hợp lệ
+          storage.clearAuth();
+          setToken(null);
+          setUser(null);
+        }
+      } catch (error) {
+        // Token hết hạn hoặc không xác thực được
+        storage.clearAuth();
+        setToken(null);
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
     };
 
     initializeAuth();
@@ -48,22 +68,22 @@ export const AuthProvider = ({ children }) => {
     return result;
   };
 
-const googleLoginCallback = async (googleToken) => {
-  const result = await authService.getMe(googleToken);
+  // Đăng nhập Google
+  const googleLoginCallback = async (googleToken) => {
+    const result = await authService.getMe(googleToken);
 
-  if (result.success) {
-    const userData = result.data;
+    if (result.success) {
+      const userData = result.data;
 
-    storage.setToken(googleToken);
-    storage.setUser(userData);
+      storage.setToken(googleToken);
+      storage.setUser(userData);
 
-    setToken(googleToken);
-    setUser(userData);
-  }
+      setToken(googleToken);
+      setUser(userData);
+    }
 
-  return result;
-};
-
+    return result;
+  };
 
   // Đăng ký
   const register = async (userData) => {

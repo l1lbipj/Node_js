@@ -35,7 +35,9 @@ const Books = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [keyword, setKeyword] = useState("");
+  const [keyword, setKeyword] = useState(
+  searchParams.get("keyword") || ""
+);
 
   const [category, setCategory] = useState(
     searchParams.get("category") || "all"

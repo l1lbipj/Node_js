@@ -1,7 +1,14 @@
 
 import { useState } from "react";
-import { Link, useNavigate, useLocation } from "react-router-dom";
-import { Input, Button, Dropdown, Avatar, Space, Typography } from "antd";
+import {
+  Avatar,
+  Button,
+  Dropdown,
+  Input,
+  Space,
+  Typography,
+} from "antd";
+
 import {
   BookOutlined,
   SearchOutlined,
@@ -12,38 +19,67 @@ import {
   DownOutlined,
 } from "@ant-design/icons";
 
+import {
+  Link,
+  useNavigate,
+  useLocation,
+} from "react-router-dom";
+
 import useAuth from "../../hooks/useAuth";
 import "../../styles/header.css";
 
+
 const { Text } = Typography;
 
-
 const Header = () => {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState("");
-
-  const location = useLocation();
-  
-  const { user, isAuthenticated, logout } = useAuth();
-
   const navigate = useNavigate();
+  const location = useLocation();
 
- const navigationItems = [
-  { label: "Trang chủ", href: "/" },
-  { label: "Khám phá sách", href: "/#discover" },
-  { label: "Thể loại", href: "/#genres" },
-  { label: "Cộng đồng", href: "/#community" },
-];
+  const {
+    user,
+    logout,
+    isAuthenticated,
+  } = useAuth();
 
-const isActiveLink = (href) => {
-  if (href === "/") {
-    return location.pathname === "/" && !location.hash;
-  }
+  const [searchValue, setSearchValue] = useState("");
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  return `${location.pathname}${location.hash}` === href;
-};
+  // ==============================
+  // MENU ĐIỀU HƯỚNG
+  // ==============================
 
-  // Điều hướng Dashboard theo vai trò
+  const navigationItems = [
+    { label: "Trang chủ", href: "/" },
+    { label: "Khám phá sách", href: "/books" },
+    { label: "Thể loại", href: "/#genres" },
+    { label: "Cộng đồng", href: "/#community" },
+  ];
+
+  // Kiểm tra đường dẫn đang được chọn
+  const isActiveLink = (href) => {
+    if (href === "/") {
+      return location.pathname === "/" && !location.hash;
+    }
+
+    if (href.startsWith("/#")) {
+      return (
+        location.pathname === "/" &&
+        location.hash === href.substring(1)
+      );
+    }
+
+    return location.pathname === href;
+  };
+
+  // Đóng menu mobile
+  const closeMenu = () => {
+    setMenuOpen(false);
+  };
+
+  // ==============================
+  // ĐIỀU HƯỚNG DASHBOARD
+  // ==============================
+
   const dashboardByRole = {
     admin: "/admin",
     publisher: "/publisher",
@@ -54,38 +90,58 @@ const isActiveLink = (href) => {
     const destination = dashboardByRole[user?.role];
 
     if (destination) {
-      setMenuOpen(false);
+      closeMenu();
       navigate(destination);
     }
   };
 
-  // Đăng xuất
+  // ==============================
+  // TÌM KIẾM SÁCH
+  // ==============================
+
+  const handleSearch = (value = searchValue) => {
+    const keyword = value.trim();
+
+    if (!keyword) {
+      return;
+    }
+
+    closeMenu();
+
+    navigate(`/books?search=${encodeURIComponent(keyword)}`);
+
+    setSearchValue("");
+  };
+
+  // ==============================
+  // ĐĂNG XUẤT
+  // ==============================
+
   const handleLogout = async () => {
     try {
       await logout();
-      setMenuOpen(false);
-      navigate("/", { replace: true });
+
+      closeMenu();
+      navigate("/");
     } catch (error) {
-      console.error("Đăng xuất thất bại:", error);
+      console.error("Lỗi đăng xuất:", error);
     }
   };
 
-  // Tìm kiếm
-  const handleSearch = (value) => {
-    const keyword = value.trim();
+  // ==============================
+  // MENU TÀI KHOẢN
+  // ==============================
 
-    if (!keyword) return;
-
-    // Chức năng tìm kiếm sẽ được hoàn thiện ở bước sau.
-    console.log("Từ khóa tìm kiếm:", keyword);
-  };
-
-  const closeMenu = () => {
-    setMenuOpen(false);
-  };
-
-  // Menu đăng xuất trên Desktop
-  const userMenuItems = [
+  const accountMenuItems = [
+    {
+      key: "dashboard",
+      label: "Trang quản lý",
+      icon: <UserOutlined />,
+      onClick: handleGoToDashboard,
+    },
+    {
+      type: "divider",
+    },
     {
       key: "logout",
       label: "Đăng xuất",
@@ -95,12 +151,21 @@ const isActiveLink = (href) => {
     },
   ];
 
+  // ==============================
+  // GIAO DIỆN
+  // ==============================
+
   return (
     <header className="site-header">
       <div className="header-container">
 
-        {/* Logo */}
-        <Link to="/" className="header-logo" onClick={closeMenu}>
+        {/* LOGO */}
+
+        <Link
+          to="/"
+          className="header-logo"
+          onClick={closeMenu}
+        >
           <span className="logo-icon">
             <BookOutlined />
           </span>
@@ -110,42 +175,51 @@ const isActiveLink = (href) => {
           </span>
         </Link>
 
-        {/* Desktop navigation */}
-        <nav className="desktop-navigation">
-  {navigationItems.map((item) => (
-    <Link
-      key={item.label}
-      to={item.href}
-      className={`navigation-link ${
-        isActiveLink(item.href) ? "active" : ""
-      }`}
-    >
-      {item.label}
-    </Link>
-  ))}
-</nav>
+        {/* DESKTOP NAVIGATION */}
 
-        {/* Search */}
+        <nav className="desktop-navigation">
+          {navigationItems.map((item) => (
+            <Link
+              key={item.label}
+              to={item.href}
+              className={`navigation-link ${
+                isActiveLink(item.href) ? "active" : ""
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
+        {/* SEARCH */}
+
         <div className="header-search">
           <Input
             placeholder="Tìm kiếm sách, tác giả..."
             prefix={<SearchOutlined />}
             value={searchValue}
-            onChange={(event) => setSearchValue(event.target.value)}
-            onPressEnter={() => handleSearch(searchValue)}
+            onChange={(event) =>
+              setSearchValue(event.target.value)
+            }
+            onPressEnter={() => handleSearch()}
             allowClear
           />
         </div>
 
-        {/* Authentication */}
+        {/* AUTHENTICATION */}
+
         <div className="header-actions">
           {isAuthenticated && user ? (
-            <>
-              {/* Nhấn Avatar hoặc tên để vào Dashboard */}
+            <Dropdown
+              menu={{
+                items: accountMenuItems,
+              }}
+              trigger={["click"]}
+              placement="bottomRight"
+            >
               <Button
                 type="text"
                 className="user-profile-button"
-                onClick={handleGoToDashboard}
               >
                 <Space size={10} align="center">
                   <Avatar
@@ -155,123 +229,153 @@ const isActiveLink = (href) => {
                   />
 
                   <div className="user-info">
-                    <Text strong className="user-fullname">
+                    <Text
+                      strong
+                      className="user-fullname"
+                    >
                       {user?.fullName || "Người dùng"}
                     </Text>
 
-                    <Text type="secondary" className="user-role">
+                    <Text
+                      type="secondary"
+                      style={{
+                        fontSize: 12,
+                        lineHeight: 1.4,
+                      }}
+                    >
                       {user?.role || ""}
                     </Text>
                   </div>
+
+                  <DownOutlined
+                    style={{ fontSize: 12 }}
+                  />
                 </Space>
               </Button>
-
-              {/* Menu đăng xuất */}
-              <Dropdown
-                menu={{ items: userMenuItems }}
-                trigger={["click"]}
-                placement="bottomRight"
-              >
-                <Button
-                  type="text"
-                  className="user-dropdown-button"
-                  aria-label="Mở menu tài khoản"
-                >
-                  <DownOutlined />
-                </Button>
-              </Dropdown>
-            </>
+            </Dropdown>
           ) : (
-            <>
-              <Link to="/login">
-                <Button type="text" className="login-button">
-                  Đăng nhập
-                </Button>
-              </Link>
+            <Space className="auth-buttons">
+              <Button
+                onClick={() => navigate("/login")}
+              >
+                Đăng nhập
+              </Button>
 
-              <Link to="/register">
-                <Button type="primary" className="register-button">
-                  Đăng ký
-                </Button>
-              </Link>
-            </>
+              <Button
+                type="primary"
+                onClick={() => navigate("/register")}
+              >
+                Đăng ký
+              </Button>
+            </Space>
           )}
         </div>
 
-        {/* Mobile menu button */}
-        <button
-          type="button"
+        {/* MOBILE MENU BUTTON */}
+
+        <Button
+          type="text"
           className="mobile-menu-button"
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label={menuOpen ? "Đóng menu" : "Mở menu"}
-          aria-expanded={menuOpen}
-        >
-          {menuOpen ? <CloseOutlined /> : <MenuOutlined />}
-        </button>
+          icon={
+            menuOpen ? (
+              <CloseOutlined />
+            ) : (
+              <MenuOutlined />
+            )
+          }
+          onClick={() =>
+            setMenuOpen((previous) => !previous)
+          }
+          aria-label={
+            menuOpen ? "Đóng menu" : "Mở menu"
+          }
+        />
+
       </div>
 
-      {/* Mobile navigation */}
-      
-{/* Mobile navigation */}
-{menuOpen && (
-  <div className="mobile-navigation">
-    {navigationItems.map((item) => (
-      <Link
-        key={item.label}
-        to={item.href}
-        className={`mobile-navigation-link ${
-          isActiveLink(item.href) ? "active" : ""
-        }`}
-        onClick={closeMenu}
-      >
-        {item.label}
-      </Link>
-    ))}
+      {/* MOBILE NAVIGATION */}
 
-    {/* Mobile authentication */}
-    <div className="mobile-auth-actions">
-      {isAuthenticated && user ? (
-        <>
-          <button
-            type="button"
-            className="mobile-user-profile"
-            onClick={handleGoToDashboard}
-          >
-            <Avatar
-              src={user?.avatar || undefined}
-              icon={<UserOutlined />}
-              size={36}
+      {menuOpen && (
+        <div className="mobile-navigation">
+
+          <nav className="mobile-navigation-links">
+            {navigationItems.map((item) => (
+              <Link
+                key={item.label}
+                to={item.href}
+                className={`navigation-link ${
+                  isActiveLink(item.href) ? "active" : ""
+                }`}
+                onClick={closeMenu}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* MOBILE SEARCH */}
+
+          <div className="mobile-search">
+            <Input
+              placeholder="Tìm kiếm sách, tác giả..."
+              prefix={<SearchOutlined />}
+              value={searchValue}
+              onChange={(event) =>
+                setSearchValue(event.target.value)
+              }
+              onPressEnter={() => handleSearch()}
+              allowClear
             />
+          </div>
 
-            <span>
-              <strong>{user?.fullName || "Người dùng"}</strong>
-              <small>{user?.role || ""}</small>
-            </span>
-          </button>
+          {/* MOBILE ACCOUNT */}
 
-          <button
-            type="button"
-            className="mobile-logout-button"
-            onClick={handleLogout}
-          >
-            <LogoutOutlined /> Đăng xuất
-          </button>
-        </>
-      ) : (
-        <>
-          <Link to="/login" onClick={closeMenu}>
-            <UserOutlined /> Đăng nhập
-          </Link>
+          {isAuthenticated && user ? (
+            <div className="mobile-user-actions">
+              <Button
+                block
+                icon={<UserOutlined />}
+                onClick={handleGoToDashboard}
+              >
+                Trang quản lý
+              </Button>
 
-          <Link to="/register" onClick={closeMenu}>
-            Đăng ký
-          </Link>
-        </>
+              <Button
+                block
+                danger
+                icon={<LogoutOutlined />}
+                onClick={handleLogout}
+              >
+                Đăng xuất
+              </Button>
+            </div>
+          ) : (
+            <div className="mobile-auth-actions">
+              <Button
+                block
+                onClick={() => {
+                  closeMenu();
+                  navigate("/login");
+                }}
+              >
+                Đăng nhập
+              </Button>
+
+              <Button
+                block
+                type="primary"
+                onClick={() => {
+                  closeMenu();
+                  navigate("/register");
+                }}
+              >
+                Đăng ký
+              </Button>
+            </div>
+          )}
+
+        </div>
       )}
-    </div>
-  </div>
-)}
-
     </header>
   );
 };

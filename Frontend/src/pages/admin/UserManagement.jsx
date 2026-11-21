@@ -57,41 +57,59 @@ const UserManagement = () => {
   const [form] = Form.useForm();
 
   // Lấy danh sách User
-  const fetchUsers = async (page = 1, pageSize = 10) => {
+  
+  const fetchUsers = async (page = 1, pageSize = 10, filters = {}) => {
+    if (!token) {
+      setUsers([]);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
 
     try {
       const response = await userService.getAllUsers(token, {
-        search,
-        role: roleFilter,
-        status: statusFilter,
+        search: filters.search ?? search,
+        role: filters.role !== undefined ? filters.role : roleFilter,
+        status: filters.status !== undefined ? filters.status : statusFilter,
         page,
         limit: pageSize,
       });
 
-      const data = response.data;
+      const data = response?.data;
 
-      setUsers(data.users || []);
+      if (!data || !Array.isArray(data.users)) {
+        throw new Error("Dữ liệu danh sách người dùng không hợp lệ");
+      }
+
+      setUsers(data.users);
 
       setPagination({
-        current: data.pagination.currentPage,
-        pageSize: data.pagination.limit,
-        total: data.pagination.totalUsers,
+        current: data.pagination?.currentPage ?? page,
+        pageSize: data.pagination?.limit ?? pageSize,
+        total: data.pagination?.totalUsers ?? 0,
       });
     } catch (error) {
+      console.error("Fetch Users Error:", error);
+
       message.error(
-        error.response?.data?.message || "Không thể lấy danh sách người dùng",
+        error.response?.data?.message ||
+          error.message ||
+          "Không thể lấy danh sách người dùng",
       );
     } finally {
       setLoading(false);
     }
   };
 
+
+  
   useEffect(() => {
     if (token) {
       fetchUsers(1, pagination.pageSize);
     }
   }, [token, roleFilter, statusFilter]);
+
 
   // Tìm kiếm
   const handleSearch = () => {
@@ -103,7 +121,12 @@ const UserManagement = () => {
     setSearch("");
     setRoleFilter(undefined);
     setStatusFilter(undefined);
-    fetchUsers(1, pagination.pageSize);
+
+    fetchUsers(1, pagination.pageSize, {
+      search: "",
+      role: undefined,
+      status: undefined,
+    });
   };
 
   // Thay đổi trang
@@ -145,17 +168,26 @@ const UserManagement = () => {
   };
 
   // Cập nhật User
+  
   const handleUpdateUser = async () => {
     try {
       const values = await form.validateFields();
 
-      // Admin không được tự thay đổi role/status
-      if (editingUser?._id === user?._id) {
-        delete values.role;
-        delete values.status;
+      if (!editingUser) return;
+
+      const updateData = {
+        ...values,
+        fullName: values.fullName.trim(),
+        avatar: values.avatar?.trim() || "",
+      };
+
+      // Không cho Admin tự thay đổi role/status
+      if (editingUser._id === user?._id) {
+        delete updateData.role;
+        delete updateData.status;
       }
 
-      await userService.updateUser(token, editingUser._id, values);
+      await userService.updateUser(token, editingUser._id, updateData);
 
       message.success("Cập nhật người dùng thành công");
 
@@ -163,15 +195,21 @@ const UserManagement = () => {
       setEditingUser(null);
       form.resetFields();
 
-      fetchUsers(pagination.current, pagination.pageSize);
+      await fetchUsers(pagination.current, pagination.pageSize);
     } catch (error) {
-      if (error.response) {
-        message.error(
-          error.response.data?.message || "Cập nhật người dùng thất bại",
-        );
+      if (error.errorFields) {
+        return;
       }
+
+      console.error("Update User Error:", error);
+
+      message.error(
+        error.response?.data?.message ||
+          "Cập nhật người dùng thất bại"
+      );
     }
   };
+
 
   // Xóa User
   const handleDeleteUser = (record) => {
@@ -194,17 +232,25 @@ const UserManagement = () => {
       okText: "Xóa",
       cancelText: "Hủy",
       okType: "danger",
+      
       onOk: async () => {
         try {
           await userService.deleteUser(token, record._id);
 
           message.success("Xóa người dùng thành công");
 
-          // Tải lại danh sách sau khi xóa
-          fetchUsers(pagination.current, pagination.pageSize);
+          const nextPage =
+            users.length === 1 && pagination.current > 1
+              ? pagination.current - 1
+              : pagination.current;
+
+          await fetchUsers(nextPage, pagination.pageSize);
         } catch (error) {
+          console.error("Delete User Error:", error);
+
           message.error(
-            error.response?.data?.message || "Xóa người dùng thất bại",
+            error.response?.data?.message ||
+              "Xóa người dùng thất bại"
           );
         }
       },
@@ -531,6 +577,6 @@ const UserManagement = () => {
       </Modal>
     </div>
   );
-};;
+};
 
 export default UserManagement;

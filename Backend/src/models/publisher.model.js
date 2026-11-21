@@ -6,6 +6,7 @@ const publisherSchema = new mongoose.Schema(
         {
             type: mongoose.Schema.Types.ObjectId,
             required: true,
+            unique: true,
             ref: 'User'
         },
         name:

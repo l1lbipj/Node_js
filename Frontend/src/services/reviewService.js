@@ -3,17 +3,25 @@ import api from "./api";
 
 const reviewService = {
   // Lấy danh sách đánh giá của một cuốn sách
-  getReviewsByBook: async (bookId) => {
-    const response = await api.get(`/reviews/book/${bookId}`);
+  getReviewsByBook: async (bookId, token) => {
+    const response = await api.get(`/reviews/book/${bookId}`, {
+      headers: token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {},
+    });
+
     return response.data;
   },
 
-  // Tạo đánh giá mới
-  createReview: async (token, reviewData) => {
-    const response = await api.post("/reviews", reviewData, {
+  // Lấy danh sách tất cả đánh giá dành cho Admin
+  getAllReviews: async (token, params = {}) => {
+    const response = await api.get("/reviews/admin", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      params,
     });
 
     return response.data;
@@ -30,13 +38,28 @@ const reviewService = {
     return response.data;
   },
 
-  // Cập nhật đánh giá
-  updateReview: async (token, reviewId, reviewData) => {
-    const response = await api.put(`/reviews/${reviewId}`, reviewData, {
+  // Tạo đánh giá mới
+  createReview: async (token, reviewData) => {
+    const response = await api.post("/reviews", reviewData, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
+
+    return response.data;
+  },
+
+  // Cập nhật đánh giá
+  updateReview: async (token, reviewId, reviewData) => {
+    const response = await api.put(
+      `/reviews/${reviewId}`,
+      reviewData,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
 
     return response.data;
   },

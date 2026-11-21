@@ -47,11 +47,13 @@ const PublisherManagement = () => {
 
   const [publishers, setPublishers] = useState([]);
   const [publisherUsers, setPublisherUsers] = useState([]);
+  const [publisherUserTotal, setPublisherUserTotal] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [usersLoading, setUsersLoading] = useState(false);
 
   const [search, setSearch] = useState("");
+
   const [pagination, setPagination] = useState({
     current: 1,
     pageSize: 10,
@@ -72,6 +74,8 @@ const PublisherManagement = () => {
     pageSize = pagination.pageSize,
     searchValue = search,
   ) => {
+    if (!token) return;
+
     try {
       setLoading(true);
 
@@ -102,12 +106,15 @@ const PublisherManagement = () => {
 
   // Lấy danh sách tài khoản Publisher
   const fetchPublisherUsers = async () => {
+    if (!token) return;
+
     try {
       setUsersLoading(true);
 
       const response = await userService.getAllUsers(token, {
         page: 1,
         limit: 100,
+        role: "publisher",
       });
 
       const result = response?.data;
@@ -122,38 +129,58 @@ const PublisherManagement = () => {
         users = result.data.users;
       }
 
-      setPublisherUsers(
-        users.filter((user) => user.role === "publisher"),
+      const filteredUsers = users.filter(
+        (user) => user.role === "publisher",
       );
+
+      setPublisherUsers(filteredUsers);
+
+      // Lấy tổng số tài khoản từ Backend
+      const totalUsers =
+        result?.pagination?.totalUsers ??
+        result?.data?.pagination?.totalUsers ??
+        filteredUsers.length;
+
+      setPublisherUserTotal(totalUsers);
     } catch (error) {
       message.error(
         error.response?.data?.message ||
           "Không thể tải danh sách tài khoản Publisher",
       );
+
+      setPublisherUsers([]);
+      setPublisherUserTotal(0);
     } finally {
       setUsersLoading(false);
     }
   };
 
-    useEffect(() => {
-      if (token) {
-        fetchPublishers(1, pagination.pageSize, search);
-        fetchPublisherUsers();
-      }
-    }, [token]);
+  // Khởi tạo dữ liệu
+  useEffect(() => {
+    if (!token) return;
+
+    fetchPublishers(1, 10, "");
+    fetchPublisherUsers();
+  }, [token]);
+
+  // Làm mới dữ liệu
+  const handleRefresh = () => {
+    fetchPublishers(pagination.current, pagination.pageSize, search);
+    fetchPublisherUsers();
+  };
 
   // Tìm kiếm
   const handleSearch = (value) => {
-    setSearch(value);
-    fetchPublishers(1, pagination.pageSize, value);
+    const searchValue = value.trim();
+
+    setSearch(searchValue);
+    fetchPublishers(1, pagination.pageSize, searchValue);
   };
 
   // Mở modal thêm Publisher
   const handleCreate = () => {
     setEditingPublisher(null);
-
     form.resetFields();
-
     setModalOpen(true);
   };
 
@@ -191,20 +218,27 @@ const PublisherManagement = () => {
         );
 
         message.success("Cập nhật nhà xuất bản thành công");
+
+        setModalOpen(false);
+        form.resetFields();
+        setEditingPublisher(null);
+
+        await fetchPublishers(
+          pagination.current,
+          pagination.pageSize,
+          search,
+        );
       } else {
         await publisherService.createPublisher(token, values);
 
         message.success("Thêm nhà xuất bản thành công");
+
+        setModalOpen(false);
+        form.resetFields();
+
+        // Tải lại trang đầu vì Publisher mới được tạo
+        await fetchPublishers(1, pagination.pageSize, search);
       }
-
-      setModalOpen(false);
-      form.resetFields();
-
-      fetchPublishers(
-        pagination.current,
-        pagination.pageSize,
-        search,
-      );
     } catch (error) {
       if (error.errorFields) return;
 
@@ -227,7 +261,11 @@ const PublisherManagement = () => {
           ? pagination.current - 1
           : pagination.current;
 
-      fetchPublishers(currentPage, pagination.pageSize, search);
+      await fetchPublishers(
+        currentPage,
+        pagination.pageSize,
+        search,
+      );
     } catch (error) {
       message.error(
         error.response?.data?.message ||
@@ -252,17 +290,18 @@ const PublisherManagement = () => {
     form.resetFields();
   };
 
-  // Tài khoản đã được liên kết
-  const linkedUserIds = publishers.map(
-    (publisher) => publisher.userId?._id || publisher.userId,
-  );
+  // Tài khoản đã được liên kết trong danh sách đang tải
+  const linkedUserIds = publishers.map((publisher) => {
+    const userId = publisher.userId?._id || publisher.userId;
+    return userId ? String(userId) : null;
+  });
 
+  // Chỉ hiển thị tài khoản chưa được liên kết
   const availableUsers = publisherUsers.filter(
-    (user) =>
-      !linkedUserIds.includes(user._id) ||
-      user._id === editingPublisher?.userId?._id,
+    (user) => !linkedUserIds.includes(String(user._id)),
   );
 
+  // Cột dữ liệu
   const columns = [
     {
       title: "Nhà xuất bản",
@@ -271,9 +310,7 @@ const PublisherManagement = () => {
         <Space>
           <Avatar
             icon={<ShopOutlined />}
-            style={{
-              backgroundColor: "#1677ff",
-            }}
+            style={{ backgroundColor: "#1677ff" }}
           />
 
           <div>
@@ -314,13 +351,14 @@ const PublisherManagement = () => {
       render: (_, record) => {
         const user = record.userId;
 
-        return user ? (
+        return user && typeof user === "object" ? (
           <Space>
             <Avatar icon={<UserOutlined />} size="small" />
+
             <div>
               <Text>{user.fullName || "Chưa có tên"}</Text>
               <br />
-              <Tag color="blue">{user.role}</Tag>
+              <Tag color="blue">{user.role || "N/A"}</Tag>
             </div>
           </Space>
         ) : (
@@ -371,10 +409,7 @@ const PublisherManagement = () => {
             onConfirm={() => handleDelete(record._id)}
           >
             <Tooltip title="Xóa">
-              <Button
-                danger
-                icon={<DeleteOutlined />}
-              />
+              <Button danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -385,11 +420,7 @@ const PublisherManagement = () => {
   return (
     <div>
       {/* Header */}
-      <Row
-        justify="space-between"
-        align="middle"
-        style={{ marginBottom: 24 }}
-      >
+      <Row justify="space-between" align="middle" style={{ marginBottom: 24 }}>
         <Col>
           <Title level={3} style={{ margin: 0 }}>
             Quản lý nhà xuất bản
@@ -404,13 +435,8 @@ const PublisherManagement = () => {
           <Space>
             <Button
               icon={<ReloadOutlined />}
-              onClick={() =>
-                fetchPublishers(
-                  pagination.current,
-                  pagination.pageSize,
-                  search,
-                )
-              }
+              loading={loading || usersLoading}
+              onClick={handleRefresh}
             >
               Làm mới
             </Button>
@@ -442,7 +468,7 @@ const PublisherManagement = () => {
           <Card>
             <Statistic
               title="Tài khoản Publisher"
-              value={publisherUsers.length}
+              value={publisherUserTotal}
               prefix={<UserOutlined />}
             />
           </Card>
@@ -452,17 +478,19 @@ const PublisherManagement = () => {
       {/* Search */}
       <Card style={{ marginBottom: 16 }}>
         <Input
+          value={search}
           placeholder="Tìm tên, email, số điện thoại hoặc địa chỉ..."
           prefix={<SearchOutlined />}
           allowClear
           onChange={(event) => {
-            if (!event.target.value) {
-              handleSearch("");
+            const value = event.target.value;
+            setSearch(value);
+
+            if (!value) {
+              fetchPublishers(1, pagination.pageSize, "");
             }
           }}
-          onPressEnter={(event) =>
-            handleSearch(event.target.value)
-          }
+          onPressEnter={(event) => handleSearch(event.target.value)}
         />
       </Card>
 
@@ -479,8 +507,7 @@ const PublisherManagement = () => {
             total: pagination.total,
             showSizeChanger: true,
             pageSizeOptions: ["10", "20", "50"],
-            showTotal: (total) =>
-              `Tổng ${total} nhà xuất bản`,
+            showTotal: (total) => `Tổng ${total} nhà xuất bản`,
           }}
           onChange={handleTableChange}
           scroll={{ x: 1000 }}
@@ -499,14 +526,11 @@ const PublisherManagement = () => {
         onOk={handleSubmit}
         okText={editingPublisher ? "Cập nhật" : "Thêm"}
         cancelText="Hủy"
+        confirmLoading={loading}
         destroyOnHidden
         width={700}
       >
-        <Form
-          form={form}
-          layout="vertical"
-          style={{ marginTop: 24 }}
-        >
+        <Form form={form} layout="vertical" style={{ marginTop: 24 }}>
           {!editingPublisher && (
             <Form.Item
               name="userId"
@@ -523,6 +547,11 @@ const PublisherManagement = () => {
                 loading={usersLoading}
                 showSearch
                 optionFilterProp="label"
+                notFoundContent={
+                  usersLoading
+                    ? "Đang tải tài khoản..."
+                    : "Không có tài khoản Publisher khả dụng"
+                }
                 options={availableUsers.map((user) => ({
                   value: user._id,
                   label: `${user.fullName} - ${user.email}`,
@@ -537,6 +566,7 @@ const PublisherManagement = () => {
             rules={[
               {
                 required: true,
+                whitespace: true,
                 message: "Vui lòng nhập tên nhà xuất bản",
               },
             ]}
@@ -550,14 +580,12 @@ const PublisherManagement = () => {
             rules={[
               {
                 required: true,
+                whitespace: true,
                 message: "Vui lòng nhập mô tả",
               },
             ]}
           >
-            <TextArea
-              rows={4}
-              placeholder="Nhập mô tả nhà xuất bản"
-            />
+            <TextArea rows={4} placeholder="Nhập mô tả nhà xuất bản" />
           </Form.Item>
 
           <Row gutter={16}>
@@ -589,6 +617,10 @@ const PublisherManagement = () => {
                     required: true,
                     message: "Vui lòng nhập số điện thoại",
                   },
+                  {
+                    pattern: /^\d{10,11}$/,
+                    message: "Số điện thoại phải có 10 hoặc 11 chữ số",
+                  },
                 ]}
               >
                 <Input placeholder="Nhập số điện thoại" />
@@ -602,6 +634,7 @@ const PublisherManagement = () => {
             rules={[
               {
                 required: true,
+                whitespace: true,
                 message: "Vui lòng nhập địa chỉ",
               },
             ]}
@@ -617,21 +650,14 @@ const PublisherManagement = () => {
         open={detailOpen}
         onCancel={() => setDetailOpen(false)}
         footer={[
-          <Button
-            key="close"
-            onClick={() => setDetailOpen(false)}
-          >
+          <Button key="close" onClick={() => setDetailOpen(false)}>
             Đóng
           </Button>,
         ]}
         width={700}
       >
         {selectedPublisher && (
-          <Descriptions
-            bordered
-            column={1}
-            style={{ marginTop: 16 }}
-          >
+          <Descriptions bordered column={1} style={{ marginTop: 16 }}>
             <Descriptions.Item label="Tên nhà xuất bản">
               {selectedPublisher.name}
             </Descriptions.Item>
@@ -668,9 +694,7 @@ const PublisherManagement = () => {
 
             <Descriptions.Item label="Ngày tạo">
               {selectedPublisher.createdAt
-                ? new Date(
-                    selectedPublisher.createdAt,
-                  ).toLocaleString("vi-VN")
+                ? new Date(selectedPublisher.createdAt).toLocaleString("vi-VN")
                 : "N/A"}
             </Descriptions.Item>
           </Descriptions>

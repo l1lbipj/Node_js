@@ -1,4 +1,6 @@
+
 import { useState } from "react";
+
 import {
   Form,
   Input,
@@ -6,14 +8,17 @@ import {
   Card,
   Typography,
   Alert,
-  notification,
+  App as AntdApp,
 } from "antd";
+
 import {
   MailOutlined,
   LockOutlined,
   GoogleOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
-import { Link, useNavigate, useLocation } from "react-router-dom";
+
+import { Link, useNavigate } from "react-router-dom";
 
 import useAuth from "../../hooks/useAuth";
 import authService from "../../services/auth.service";
@@ -26,8 +31,32 @@ const Login = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
+  const { notification } = AntdApp.useApp();
+
+  // Quay lại trang trước
+  const handleBack = () => {
+    if (window.history.state?.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate("/", { replace: true });
+    }
+  };
+
+  // Điều hướng theo quyền người dùng
+  const redirectByRole = (role) => {
+    const redirectPath = {
+      admin: "/admin",
+      publisher: "/publisher",
+      reader: "/",
+    };
+
+    navigate(redirectPath[role] || "/", {
+      replace: true,
+    });
+  };
+
+  // Đăng nhập
   const handleLogin = async (values) => {
     try {
       setLoading(true);
@@ -35,32 +64,30 @@ const Login = () => {
 
       const result = await login(values);
 
-      if (result.success) {
-        const loggedInUser = result.data.user;
-
-        // Điều hướng theo vai trò người dùng
-        const defaultDestination = {
-          admin: "/admin",
-          publisher: "/publisher",
-          reader: "/",
-        };
-
-        // Ưu tiên role để Admin luôn vào Dashboard
-        const destination =
-          defaultDestination[loggedInUser?.role] ||
-          location.state?.from?.pathname ||
-          "/";
-
-        notification.success({
-          message: `Chào mừng ${loggedInUser?.fullName || "bạn"}!`,
-          description: "Bạn đã đăng nhập thành công vào Book Nest.",
-          placement: "topRight",
-          duration: 3,
-        });
-
-        navigate(destination, { replace: true });
+      if (!result?.success) {
+        setError(result?.message || "Đăng nhập thất bại");
+        return;
       }
+
+      const loggedInUser = result.data?.user;
+
+      notification.success({
+        message: "Đăng nhập thành công!",
+        description: `Chào mừng ${
+          loggedInUser?.fullName || "bạn"
+        } đến với Book Nest.`,
+        placement: "topRight",
+        duration: 4,
+      });
+
+      // Chuyển trang theo role
+      const role = loggedInUser?.role?.toLowerCase();
+
+      redirectByRole(role);
+
     } catch (err) {
+      console.error("Lỗi đăng nhập:", err);
+
       setError(
         err.response?.data?.message ||
           err.message ||
@@ -82,7 +109,24 @@ const Login = () => {
         background: "#f5f7fa",
       }}
     >
-      <Card style={{ width: "100%", maxWidth: 420 }}>
+      <Card
+        style={{
+          width: "100%",
+          maxWidth: 420,
+        }}
+      >
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={handleBack}
+          style={{
+            marginBottom: 16,
+            paddingLeft: 0,
+          }}
+        >
+          Quay lại
+        </Button>
+
         <Title level={2} style={{ textAlign: "center" }}>
           Đăng nhập
         </Title>
@@ -96,7 +140,10 @@ const Login = () => {
             type="error"
             showIcon
             message={error}
-            style={{ marginTop: 20, marginBottom: 20 }}
+            style={{
+              marginTop: 20,
+              marginBottom: 20,
+            }}
           />
         )}
 
@@ -109,8 +156,14 @@ const Login = () => {
             label="Email"
             name="email"
             rules={[
-              { required: true, message: "Vui lòng nhập email" },
-              { type: "email", message: "Email không hợp lệ" },
+              {
+                required: true,
+                message: "Vui lòng nhập email",
+              },
+              {
+                type: "email",
+                message: "Email không hợp lệ",
+              },
             ]}
           >
             <Input
@@ -124,7 +177,10 @@ const Login = () => {
             label="Mật khẩu"
             name="password"
             rules={[
-              { required: true, message: "Vui lòng nhập mật khẩu" },
+              {
+                required: true,
+                message: "Vui lòng nhập mật khẩu",
+              },
             ]}
           >
             <Input.Password
@@ -185,7 +241,12 @@ const Login = () => {
           </div>
         </Form>
 
-        <div style={{ textAlign: "center" }}>
+        <div
+          style={{
+            textAlign: "center",
+            marginTop: 24,
+          }}
+        >
           <Text>Chưa có tài khoản? </Text>
           <Link to="/register">Đăng ký ngay</Link>
         </div>

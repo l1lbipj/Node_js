@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+
 import {
   Form,
   Input,
@@ -8,12 +9,16 @@ import {
   Typography,
   Alert,
 } from "antd";
+
 import {
   UserOutlined,
   MailOutlined,
   LockOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
+
 import { Link, useNavigate } from "react-router-dom";
+
 import useAuth from "../../hooks/useAuth";
 
 const { Title, Text } = Typography;
@@ -26,6 +31,15 @@ const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
 
+  // Quay lại trang trước
+  const handleBack = () => {
+    if (window.history.state?.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate("/", { replace: true });
+    }
+  };
+
   const handleRegister = async (values) => {
     try {
       setLoading(true);
@@ -33,23 +47,26 @@ const Register = () => {
       setSuccess("");
 
       const result = await register({
-        fullName: values.fullName,
-        email: values.email,
+        fullName: values.fullName.trim(),
+        email: values.email.trim().toLowerCase(),
         password: values.password,
       });
 
-      if (result.success) {
-        setSuccess("Đăng ký tài khoản thành công!");
-
-        setTimeout(() => {
-          navigate("/login", { replace: true });
-        }, 1500);
+      if (!result?.success) {
+        setError(result?.message || "Đăng ký thất bại");
+        return;
       }
+
+      setSuccess("Đăng ký tài khoản thành công!");
+
+      setTimeout(() => {
+        navigate("/login", { replace: true });
+      }, 1500);
     } catch (err) {
       setError(
         err.response?.data?.message ||
-        err.message ||
-        "Đăng ký thất bại"
+          err.message ||
+          "Đăng ký thất bại"
       );
     } finally {
       setLoading(false);
@@ -68,6 +85,19 @@ const Register = () => {
       }}
     >
       <Card style={{ width: "100%", maxWidth: 450 }}>
+        {/* Nút quay lại */}
+        <Button
+          type="text"
+          icon={<ArrowLeftOutlined />}
+          onClick={handleBack}
+          style={{
+            marginBottom: 16,
+            paddingLeft: 0,
+          }}
+        >
+          Quay lại
+        </Button>
+
         <Title level={2} style={{ textAlign: "center" }}>
           Đăng ký tài khoản
         </Title>
@@ -99,12 +129,30 @@ const Register = () => {
           onFinish={handleRegister}
           style={{ marginTop: 24 }}
         >
+          {/* Full Name */}
           <Form.Item
             label="Họ và tên"
             name="fullName"
             rules={[
-              { required: true, message: "Vui lòng nhập họ và tên" },
-              { max: 100, message: "Họ tên tối đa 100 ký tự" },
+              {
+                required: true,
+                message: "Vui lòng nhập họ và tên",
+              },
+              {
+                validator: (_, value) => {
+                  if (value && !value.trim()) {
+                    return Promise.reject(
+                      new Error("Họ và tên không được để trống")
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
+              },
+              {
+                max: 100,
+                message: "Họ tên tối đa 100 ký tự",
+              },
             ]}
           >
             <Input
@@ -114,12 +162,19 @@ const Register = () => {
             />
           </Form.Item>
 
+          {/* Email */}
           <Form.Item
             label="Email"
             name="email"
             rules={[
-              { required: true, message: "Vui lòng nhập email" },
-              { type: "email", message: "Email không hợp lệ" },
+              {
+                required: true,
+                message: "Vui lòng nhập email",
+              },
+              {
+                type: "email",
+                message: "Email không hợp lệ",
+              },
             ]}
           >
             <Input
@@ -129,12 +184,35 @@ const Register = () => {
             />
           </Form.Item>
 
+          {/* Password */}
           <Form.Item
             label="Mật khẩu"
             name="password"
             rules={[
-              { required: true, message: "Vui lòng nhập mật khẩu" },
-              { min: 8, message: "Mật khẩu phải có ít nhất 8 ký tự" },
+              {
+                required: true,
+                message: "Vui lòng nhập mật khẩu",
+              },
+              {
+                min: 8,
+                message: "Mật khẩu phải có ít nhất 8 ký tự",
+              },
+              {
+                validator: (_, value) => {
+                  if (
+                    value &&
+                    new TextEncoder().encode(value).length > 72
+                  ) {
+                    return Promise.reject(
+                      new Error(
+                        "Mật khẩu không được vượt quá 72 bytes"
+                      )
+                    );
+                  }
+
+                  return Promise.resolve();
+                },
+              },
             ]}
           >
             <Input.Password
@@ -144,6 +222,7 @@ const Register = () => {
             />
           </Form.Item>
 
+          {/* Confirm Password */}
           <Form.Item
             label="Xác nhận mật khẩu"
             name="confirmPassword"
@@ -155,7 +234,10 @@ const Register = () => {
               },
               ({ getFieldValue }) => ({
                 validator(_, value) {
-                  if (!value || getFieldValue("password") === value) {
+                  if (
+                    !value ||
+                    getFieldValue("password") === value
+                  ) {
                     return Promise.resolve();
                   }
 
@@ -173,6 +255,7 @@ const Register = () => {
             />
           </Form.Item>
 
+          {/* Submit */}
           <Form.Item>
             <Button
               type="primary"
