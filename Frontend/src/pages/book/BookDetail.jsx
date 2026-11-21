@@ -119,8 +119,8 @@ const BookDetail = () => {
 
     try {
       const result = await reviewService.getReviewsByBook(
-        id,
-        token
+        token,
+        id
       );
 
       if (!result?.success) {
