@@ -20,6 +20,8 @@ import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import GoogleCallback from "../pages/auth/GoogleCallback";
 import PublisherDashboard from "../pages/publisher/PublisherDashboard";
+import PublisherReviews from "../pages/publisher/PublisherReviews";
+import PublisherRestrictedManagement from "../pages/publisher/PublisherRestrictedManagement";
 
 const AppRoutes = () => {
   return (
@@ -82,10 +84,11 @@ const AppRoutes = () => {
 
             {/* Trang dành cho Publisher */}
             <Route element={<RoleRoute allowedRoles={["publisher"]} />}>
-              <Route
-                path="/publisher"
-                element={<PublisherDashboard />}
-              />
+              <Route path="/publisher" element={<PublisherDashboard />} />
+              <Route path="/publisher/books" element={<PublisherDashboard />} />
+              <Route path="/publisher/reviews" element={<PublisherReviews />} />
+              <Route path="/publisher/comments" element={<PublisherRestrictedManagement type="comments" />} />
+              <Route path="/publisher/reports" element={<PublisherRestrictedManagement type="reports" />} />
             </Route>
 
             {/* Trang dành cho Reader */}

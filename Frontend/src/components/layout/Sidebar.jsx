@@ -72,6 +72,26 @@ const Sidebar = () => {
         icon: <DashboardOutlined />,
         label: "Tổng quan",
       },
+      {
+        key: "/publisher/books",
+        icon: <BookOutlined />,
+        label: "Quản lý sách",
+      },
+      {
+        key: "/publisher/reviews",
+        icon: <StarOutlined />,
+        label: "Đánh giá sách",
+      },
+      {
+        key: "/publisher/comments",
+        icon: <CommentOutlined />,
+        label: "Bình luận (giới hạn)",
+      },
+      {
+        key: "/publisher/reports",
+        icon: <FlagOutlined />,
+        label: "Báo cáo (giới hạn)",
+      },
     ],
 
     reader: [
