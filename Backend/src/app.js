@@ -2,6 +2,7 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 const requestLogger = require("./middlewares/requestLogger");
+const activityLogMiddleware = require("./middlewares/activityLog.middleware");
 const notFound = require("./middlewares/notFound");
 const errorHandler = require("./middlewares/errorHandler");
 const apiResponse = require("./utils/apiResponse");
@@ -44,6 +45,7 @@ app.use(
     credentials: true,
   }),
 );
+app.use(activityLogMiddleware);
 
 // Health check
 app.get("/api/health", (req, res) => {
