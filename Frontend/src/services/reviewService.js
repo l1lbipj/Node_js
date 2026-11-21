@@ -2,20 +2,18 @@
 import api from "./api";
 
 const reviewService = {
-  // Lấy danh sách đánh giá của một cuốn sách
-  getReviewsByBook: async (bookId, token) => {
+  // Publisher chỉ được xem đánh giá của từng sách thuộc hồ sơ của mình.
+  getReviewsByBook: async (token, bookId) => {
     const response = await api.get(`/reviews/book/${bookId}`, {
-      headers: token
-        ? {
-            Authorization: `Bearer ${token}`,
-          }
-        : {},
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
 
     return response.data;
   },
 
-  // Lấy danh sách tất cả đánh giá dành cho Admin
+  // Lấy danh sách đánh giá dành cho Admin
   getAllReviews: async (token, params = {}) => {
     const response = await api.get("/reviews/admin", {
       headers: {

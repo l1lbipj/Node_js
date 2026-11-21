@@ -32,6 +32,9 @@ import ReaderProfile from "../pages/reader/ReaderProfile";
 import Login from "../pages/auth/Login";
 import Register from "../pages/auth/Register";
 import GoogleCallback from "../pages/auth/GoogleCallback";
+import PublisherDashboard from "../pages/publisher/PublisherDashboard";
+import PublisherReviews from "../pages/publisher/PublisherReviews";
+import PublisherRestrictedManagement from "../pages/publisher/PublisherRestrictedManagement";
 
 // ==============================
 // PUBLIC PAGES
@@ -128,27 +131,11 @@ const AppRoutes = () => {
             ============================== */}
 
             <Route element={<RoleRoute allowedRoles={["publisher"]} />}>
-
-              <Route
-                path="/publisher"
-                element={<div>Trang quản lý Publisher</div>}
-              />
-
-              <Route
-                path="/publisher/books"
-                element={<div>Quản lý sách của Publisher</div>}
-              />
-
-              <Route
-                path="/publisher/reviews"
-                element={<div>Đánh giá sách</div>}
-              />
-
-              <Route
-                path="/publisher/comments"
-                element={<div>Bình luận sách</div>}
-              />
-
+              <Route path="/publisher" element={<PublisherDashboard />} />
+              <Route path="/publisher/books" element={<PublisherDashboard />} />
+              <Route path="/publisher/reviews" element={<PublisherReviews />} />
+              <Route path="/publisher/comments" element={<PublisherRestrictedManagement type="comments" />} />
+              <Route path="/publisher/reports" element={<PublisherRestrictedManagement type="reports" />} />
             </Route>
 
             {/* ==============================

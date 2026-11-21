@@ -1,0 +1,242 @@
+.publisher-page {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.publisher-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.publisher-page-heading h2 {
+  margin: 6px 0 4px;
+  color: #1f2d3d;
+}
+
+.publisher-eyebrow {
+  color: #1677ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+
+.publisher-permission-note {
+  display: block;
+  margin-top: 16px;
+}
+
+.publisher-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 8px 0 20px;
+}
+
+.publisher-hero h2 {
+  margin: 6px 0 4px;
+  color: #132238;
+  letter-spacing: -0.02em;
+}
+
+.publisher-hero p {
+  max-width: 620px;
+  margin: 0;
+  color: #6b7b91;
+  font-size: 15px;
+}
+
+.eyebrow {
+  color: #3564d8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.publisher-notice {
+  margin-bottom: 18px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #eef5ff, #f7faff);
+}
+
+.stats-row {
+  margin-bottom: 18px;
+}
+
+.stat-card {
+  height: 100%;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(35, 60, 100, 0.06);
+}
+
+.stat-card .ant-statistic-title {
+  color: #78879b;
+}
+
+.stat-card .ant-statistic-content {
+  color: #15263e;
+  font-weight: 700;
+}
+
+.stat-card > .ant-card-body > .ant-typography {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+}
+
+.stat-card-blue { border-top: 3px solid #4f7cff; }
+.stat-card-purple { border-top: 3px solid #9a72e8; }
+.stat-card-green { border-top: 3px solid #35b981; }
+.stat-card-orange { border-top: 3px solid #f39b45; }
+
+.stat-card-blue .ant-statistic-content-prefix { color: #4f7cff; }
+.stat-card-purple .ant-statistic-content-prefix { color: #9a72e8; }
+.stat-card-green .ant-statistic-content-prefix { color: #35b981; }
+.stat-card-orange .ant-statistic-content-prefix { color: #f39b45; }
+
+.books-card,
+.account-card {
+  height: 100%;
+  border: 0;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(35, 60, 100, 0.06);
+}
+
+.books-card .ant-card-head,
+.account-card .ant-card-head {
+  border-bottom-color: #eef1f6;
+}
+
+.books-card .ant-card-head-title,
+.account-card .ant-card-head-title {
+  color: #1c2e47;
+}
+
+.table-toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.table-toolbar .ant-input-affix-wrapper {
+  max-width: 360px;
+}
+
+.table-toolbar .ant-select {
+  min-width: 180px;
+}
+
+.book-cover {
+  display: grid;
+  width: 44px;
+  height: 58px;
+  flex: 0 0 44px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #eaf1ff;
+  color: #5080e8;
+}
+
+.book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.book-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.book-cell .ant-typography {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.book-author {
+  font-size: 12px;
+}
+
+.rating-cell {
+  color: #e5a52d;
+  white-space: nowrap;
+}
+
+.rating-cell .ant-typography {
+  font-size: 12px;
+}
+
+.account-profile {
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 0 22px;
+  text-align: center;
+}
+
+.account-profile h4 {
+  margin: 8px 0 0;
+  color: #1c2e47;
+}
+
+.account-card .ant-list-item {
+  gap: 16px;
+}
+
+.account-card .ant-list-item .ant-typography:last-child {
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.account-tip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 10px;
+  background: #f5f8ff;
+}
+
+.book-form {
+  margin-top: 22px;
+}
+
+@media (max-width: 768px) {
+  .publisher-page-heading {
+    flex-direction: column;
+  }
+
+  .publisher-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .publisher-hero .ant-btn {
+    width: 100%;
+  }
+
+  .table-toolbar {
+    flex-direction: column;
+  }
+
+  .table-toolbar .ant-input-affix-wrapper,
+  .table-toolbar .ant-select {
+    max-width: none;
+    width: 100%;
+  }
+}
