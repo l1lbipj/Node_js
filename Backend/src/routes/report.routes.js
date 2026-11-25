@@ -8,6 +8,9 @@ const roleMiddleware = require("../middlewares/roleMiddleware");
 // Tất cả Report API đều yêu cầu đăng nhập
 router.use(authMiddleware);
 
+// Publisher chỉ được xem các báo cáo liên quan đến sách của mình.
+router.get("/publisher", roleMiddleware("publisher"), reportController.getPublisherReports);
+
 // Chỉ Admin được quản lý Report
 router.use(roleMiddleware("admin"));
 

@@ -1,44 +1,8 @@
-
 import api from "./api";
-
-const reportService = {
-  // Lấy danh sách báo cáo
-  getAllReports: async (token, params = {}) => {
-    const response = await api.get("/reports", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      params,
-    });
-
-    return response.data;
-  },
-
-  // Lấy chi tiết báo cáo
-  getReportById: async (token, reportId) => {
-    const response = await api.get(`/reports/${reportId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    return response.data;
-  },
-
-  // Cập nhật trạng thái báo cáo
-  updateReportStatus: async (token, reportId, status) => {
-    const response = await api.put(
-      `/reports/${reportId}`,
-      { status },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    return response.data;
-  },
-};
-
-export default reportService;
+const h=(token)=>({headers:{Authorization:`Bearer ${token}`}});
+const reportService={
+ getPublisherReports:async(token)=>{const r=await api.get("/reports/publisher",h(token));return r.data;},
+ getAllReports:async(token,params={})=>{const r=await api.get("/reports",{...h(token),params});return r.data;},
+ getReportById:async(token,id)=>{const r=await api.get(`/reports/${id}`,h(token));return r.data;},
+ updateReportStatus:async(token,id,status)=>{const r=await api.put(`/reports/${id}`,{status},h(token));return r.data;},
+}; export default reportService;

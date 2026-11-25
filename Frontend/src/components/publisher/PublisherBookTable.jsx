@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import {
   Button,
   Card,
@@ -18,6 +19,7 @@ import {
   ReloadOutlined,
   SearchOutlined,
   StarFilled,
+  EyeOutlined,
 } from "@ant-design/icons";
 
 const { Text } = Typography;
@@ -48,6 +50,7 @@ const PublisherBookTable = ({
   onEdit,
   onDelete,
 }) => {
+  const navigate = useNavigate();
   const columns = [
     {
       title: "Sách",
@@ -92,6 +95,7 @@ const PublisherBookTable = ({
       align: "right",
       render: (_, book) => (
         <Space>
+          <Tooltip title="Xem đánh giá"><Button aria-label={`Xem đánh giá ${book.title}`} icon={<EyeOutlined />} onClick={() => navigate(`/publisher/reviews?bookId=${book._id}`)} /></Tooltip>
           <Tooltip title="Chỉnh sửa"><Button aria-label={`Chỉnh sửa ${book.title}`} icon={<EditOutlined />} onClick={() => onEdit(book)} /></Tooltip>
           <Popconfirm
             title="Xóa sách này?"

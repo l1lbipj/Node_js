@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Avatar,
   Card,
@@ -38,7 +39,8 @@ const belongsToPublisher = (book, user) => {
 };
 
 const PublisherReviews = () => {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
+  const [searchParams] = useSearchParams();
   const [books, setBooks] = useState([]);
   const [selectedBookId, setSelectedBookId] = useState();
   const [reviews, setReviews] = useState([]);
@@ -49,17 +51,24 @@ const PublisherReviews = () => {
     let active = true;
     const loadBooks = async () => {
       try {
-        const response = await bookService.getAllBooks();
-        if (active) setBooks(unwrapBooks(response).filter((book) => belongsToPublisher(book, user)));
+        const response = await bookService.getMyBooks(token);
+        const ownBooks = unwrapBooks(response);
+        if (active) {
+          setBooks(ownBooks);
+          const requestedId = searchParams.get("bookId");
+          setSelectedBookId(requestedId && ownBooks.some((book) => book._id === requestedId) ? requestedId : ownBooks[0]?._id);
+        }
       } catch (error) {
-        message.error(error.response?.data?.message || "Không thể tải danh sách sách");
+        if (active && error.response?.status !== 401 && error.response?.status !== 403) {
+          message.error("Không thể tải danh sách sách");
+        }
       } finally {
         if (active) setLoadingBooks(false);
       }
     };
-    loadBooks();
+    if (token) loadBooks();
     return () => { active = false; };
-  }, [user]);
+  }, [token, searchParams]);
 
   useEffect(() => {
     if (!token || !selectedBookId) {
@@ -73,7 +82,7 @@ const PublisherReviews = () => {
         const data = response?.data || {};
         if (active) setReviews(Array.isArray(data.reviews) ? data.reviews : []);
       } catch (error) {
-        if (active) message.error(error.response?.data?.message || "Không thể tải đánh giá của sách");
+        if (active && error.response?.status !== 401 && error.response?.status !== 403) message.error("Không thể tải đánh giá của sách");
       } finally {
         if (active) setLoadingReviews(false);
       }

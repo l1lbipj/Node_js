@@ -88,6 +88,39 @@ const getAllBooks = async (req, res, next) => {
 };
 
 // =========================
+// GET MY BOOKS: Get publisher's book
+// =========================
+const getMyBooks = async (req, res, next) => {
+  try {
+    const publisher = await Publisher.findOne({
+      userId: req.user._id,
+    });
+
+    if (!publisher) {
+      return res.status(404).json({
+        success: false,
+        message: "Tài khoản chưa có hồ sơ Publisher",
+        errors: [],
+      });
+    }
+
+    const books = await Book.find({
+      publisherId: publisher._id,
+    })
+      .populate("publisherId", "name email userId")
+      .sort({ createdAt: -1 });
+
+    return successResponse(
+      res,
+      "Lấy danh sách sách của Publisher thành công",
+      books,
+    );
+  } catch (error) {
+    next(error);
+  }
+};
+
+// =========================
 // GET BOOK BY ID
 // =========================
 const getBookById = async (req, res, next) => {
@@ -444,6 +477,7 @@ const deleteBook = async (req, res, next) => {
 
 module.exports = {
   getAllBooks,
+  getMyBooks,
   getBookById,
   createBook,
   updateBook,

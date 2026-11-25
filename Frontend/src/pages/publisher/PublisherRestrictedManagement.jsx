@@ -1,42 +1,11 @@
-import { Alert, Card, Descriptions, Tag, Typography } from "antd";
-import { LockOutlined } from "@ant-design/icons";
-
-const { Title, Text } = Typography;
-
-const PublisherRestrictedManagement = ({ type }) => {
-  const isReports = type === "reports";
-  const title = isReports ? "Quản lý báo cáo" : "Quản lý bình luận";
-  const endpoint = isReports ? "/api/reports" : "/api/comments/admin";
-  const reason = isReports
-    ? "Toàn bộ Report API hiện yêu cầu role admin."
-    : "Các endpoint quản lý toàn bộ bình luận và xử lý báo cáo comment hiện yêu cầu role admin.";
-
-  return (
-    <div className="publisher-page">
-      <div className="publisher-page-heading">
-        <div>
-          <Text className="publisher-eyebrow">PUBLISHER WORKSPACE</Text>
-          <Title level={2}>{title}</Title>
-          <Text type="secondary">Khu vực được hiển thị theo cấu trúc quản trị, nhưng chưa mở quyền xử lý cho Publisher.</Text>
-        </div>
-        <Tag icon={<LockOutlined />} color="default">Admin only</Tag>
-      </div>
-      <Card>
-        <Alert
-          type="warning"
-          showIcon
-          message="Tính năng đang bị giới hạn bởi Backend"
-          description={reason}
-        />
-        <Descriptions bordered column={1} size="small" style={{ marginTop: 20 }}>
-          <Descriptions.Item label="Endpoint liên quan"><Text code>{endpoint}</Text></Descriptions.Item>
-          <Descriptions.Item label="Quyền hiện tại"><Tag color="red">Chỉ Admin</Tag></Descriptions.Item>
-          <Descriptions.Item label="Publisher có thể làm gì">Chưa thể tải danh sách, xem chi tiết hoặc cập nhật trạng thái qua API hiện tại.</Descriptions.Item>
-          <Descriptions.Item label="Muốn mở chức năng">Backend cần bổ sung endpoint và middleware kiểm tra Publisher theo các sách thuộc hồ sơ của mình.</Descriptions.Item>
-        </Descriptions>
-      </Card>
-    </div>
-  );
-};
-
-export default PublisherRestrictedManagement;
+import { useEffect, useState } from "react";
+import { Avatar, Button, Card, Empty, Input, List, Spin, Tag, Typography, message } from "antd";
+import { SendOutlined, CommentOutlined, FlagOutlined } from "@ant-design/icons";
+import useAuth from "../../hooks/useAuth";
+import commentService from "../../services/commentService";
+import reportService from "../../services/reportService";
+const { Title, Text }=Typography;
+const PublisherRestrictedManagement=({type})=>{const {token}=useAuth();const reports=type==="reports";const [items,setItems]=useState([]);const [loading,setLoading]=useState(true);const [reply,setReply]=useState({});const [sending,setSending]=useState({});
+ const load=async()=>{setLoading(true);try{const r=reports?await reportService.getPublisherReports(token):await commentService.getPublisherComments(token);setItems(r?.data?.[reports?"reports":"comments"]||[]);}catch(e){if(e.response?.status!==401&&e.response?.status!==403)message.error("Không thể tải dữ liệu");}finally{setLoading(false);}};useEffect(()=>{if(token)load();},[token,type]);
+ const send=async(id)=>{if(!reply[id]?.trim())return;setSending(s=>({...s,[id]:true}));try{await commentService.replyPublisherComment(token,id,reply[id]);setReply(r=>({...r,[id]:""}));message.success("Đã trả lời bình luận");load();}catch(e){if(e.response?.status!==401&&e.response?.status!==403)message.error("Không thể trả lời");}finally{setSending(s=>({...s,[id]:false}));}};
+ return <div className="publisher-page"><div className="publisher-page-heading"><div><Text className="publisher-eyebrow">PUBLISHER WORKSPACE</Text><Title level={2}>{reports?"Báo cáo sách":"Bình luận sách"}</Title><Text type="secondary">{reports?"Các báo cáo của độc giả liên quan đến review và bình luận trên sách của bạn.":"Các bình luận của độc giả trên review thuộc sách của bạn; Publisher có thể trả lời với role Publisher."}</Text></div><Tag icon={reports?<FlagOutlined/>:<CommentOutlined/>} color={reports?"orange":"blue"}>{items.length} mục</Tag></div><Card><Spin spinning={loading}>{!items.length&&!loading?<Empty description={reports?"Chưa có báo cáo liên quan":"Chưa có bình luận trên sách của bạn"}/>:<List itemLayout="vertical" dataSource={items} renderItem={(item)=><List.Item actions={reports?[<Tag color={item.status==="pending"?"gold":"green"}>{item.status}</Tag>]:undefined}><List.Item.Meta avatar={<Avatar src={item.userId?.avatar}>{item.userId?.fullName?.[0]||"U"}</Avatar>} title={<span>{item.userId?.fullName||"Người dùng"} <Tag color={item.userId?.role==="publisher"?"purple":"blue"}>{item.userId?.role==="publisher"?"Publisher":"Reader"}</Tag></span>} description={item.targetId?.bookId?.title?`Sách: ${item.targetId.bookId.title}`:"Nội dung liên quan đến sách của bạn"}/>{reports?<Text>{item.reason}</Text>:<><Text>{item.content}</Text><div style={{display:"flex",gap:8,marginTop:12}}><Input value={reply[item._id]||""} onChange={e=>setReply(r=>({...r,[item._id]:e.target.value}))} placeholder="Viết câu trả lời..." onPressEnter={()=>send(item._id)}/><Button type="primary" icon={<SendOutlined/>} loading={sending[item._id]} onClick={()=>send(item._id)}>Trả lời</Button></div></>}</List.Item>}/>}</Spin></Card></div>;};export default PublisherRestrictedManagement;

@@ -85,12 +85,12 @@ const Sidebar = () => {
       {
         key: "/publisher/comments",
         icon: <CommentOutlined />,
-        label: "Bình luận (giới hạn)",
+        label: "Bình luận sách",
       },
       {
         key: "/publisher/reports",
         icon: <FlagOutlined />,
-        label: "Báo cáo (giới hạn)",
+        label: "Báo cáo sách",
       },
     ],
 

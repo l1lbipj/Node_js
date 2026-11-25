@@ -6,6 +6,16 @@ const bookService = {
     const response = await api.get("/books");
     return response.data;
   },
+  // Lấy publisher's book
+    getMyBooks: async (token) => {
+    const response = await api.get("/books/mine", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  },
 
   // Lấy chi tiết sách
   getBookById: async (bookId) => {

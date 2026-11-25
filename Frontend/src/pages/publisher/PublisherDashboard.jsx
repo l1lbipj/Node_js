@@ -1,180 +1,99 @@
-import { useEffect, useMemo, useState } from "react";
-import { Alert, Col, Form, Row, message } from "antd";
-import { CheckCircleOutlined } from "@ant-design/icons";
-import bookService from "../../services/bookService";
+import { useEffect, useState } from "react";
+import { Alert, Card, Col, Row, Statistic, Typography, message } from "antd";
+import { BookOutlined, CommentOutlined, FlagOutlined, StarFilled } from "@ant-design/icons";
 import useAuth from "../../hooks/useAuth";
 import PublisherHeader from "../../components/publisher/PublisherHeader";
-import PublisherStats from "../../components/publisher/PublisherStats";
-import PublisherBooks from "./PublisherBooks";
-import PublisherBookForm from "./PublisherBookForm";
-import PublisherProfile from "./PublisherProfile";
+import PublisherProfile from "../../components/publisher/PublisherProfile";
+import publisherService from "../../services/publisherService";
+import bookService from "../../services/bookService";
 import "./PublisherDashboard.css";
 
-const emptyBook = { title: "", author: [], category: [], description: "", coverImage: "", publishDate: "" };
-
-const unwrapBooks = (payload) => {
-  const data = payload?.data ?? payload;
-  if (Array.isArray(data)) return data;
-  if (Array.isArray(data?.books)) return data.books;
-  return [];
-};
-
-const normalizeArray = (value) => {
-  if (Array.isArray(value)) return value;
-  if (typeof value === "string" && value.trim()) return [value.trim()];
-  return [];
-};
-
-const matchesCurrentPublisher = (book, user) => {
-  const publisher = book?.publisherId;
-  if (!publisher || typeof publisher !== "object") return false;
-  const userId = user?.id || user?._id;
-  const publisherUserId = publisher.userId?._id || publisher.userId;
-  if (userId && publisherUserId && String(userId) === String(publisherUserId)) return true;
-  return Boolean(user?.email && publisher.email && user.email.toLowerCase() === publisher.email.toLowerCase());
-};
+const { Text } = Typography;
 
 const PublisherDashboard = () => {
   const { user, token } = useAuth();
-  const [allBooks, setAllBooks] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState();
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingBook, setEditingBook] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [form] = Form.useForm();
-
-  const fetchBooks = async () => {
-    try {
-      setLoading(true);
-      const response = await bookService.getAllBooks();
-      setAllBooks(unwrapBooks(response));
-    } catch (error) {
-      message.error(error.response?.data?.message || "Không thể tải danh sách sách");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [stats, setStats] = useState({ totalBooks: 0, averageRating: 0, totalReviews: 0 });
 
   useEffect(() => {
-    const timer = window.setTimeout(fetchBooks, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
+    if (!token) return undefined;
+    let active = true;
 
-  const publisherBooks = useMemo(() => {
-    const matched = allBooks.filter((book) => matchesCurrentPublisher(book, user));
-    // Backend hiện populate publisher name/email nhưng chưa luôn trả userId.
-    return matched.length > 0 || allBooks.length === 0 ? matched : allBooks;
-  }, [allBooks, user]);
+    const loadDashboard = async () => {
+      try {
+        const [publisherResponse, booksResponse] = await Promise.all([
+          publisherService.getMyPublisher(token),
+          bookService.getMyBooks(token),
+        ]);
+        const publisherStats = publisherResponse?.data?.stats || {};
+        const booksData = booksResponse?.data;
+        const books = Array.isArray(booksData)
+          ? booksData
+          : Array.isArray(booksData?.books)
+            ? booksData.books
+            : [];
+        const totalBooks = books.length || Number(publisherStats.totalBooks || 0);
+        const totalReviews = books.reduce(
+          (sum, book) => sum + Number(book.totalReview || 0),
+          Number(publisherStats.totalReviews || 0),
+        );
+        const averageRating = books.length
+          ? books.reduce((sum, book) => sum + Number(book.averageRating || 0), 0) / books.length
+          : Number(publisherStats.averageRating || 0);
 
-  const categories = useMemo(
-    () => [...new Set(publisherBooks.flatMap((book) => normalizeArray(book.category)))].sort(),
-    [publisherBooks],
-  );
-
-  const filteredBooks = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return publisherBooks.filter((book) => {
-      const searchable = [book.title, ...normalizeArray(book.author), ...normalizeArray(book.category)].join(" ").toLowerCase();
-      return (!query || searchable.includes(query)) && (!category || normalizeArray(book.category).includes(category));
-    });
-  }, [category, publisherBooks, search]);
-
-  const averageRating = publisherBooks.length
-    ? publisherBooks.reduce((sum, book) => sum + Number(book.averageRating || 0), 0) / publisherBooks.length
-    : 0;
-  const totalReviews = publisherBooks.reduce((sum, book) => sum + Number(book.totalReview || 0), 0);
-
-  const openCreate = () => {
-    setEditingBook(null);
-    form.setFieldsValue(emptyBook);
-    setModalOpen(true);
-  };
-
-  const openEdit = (book) => {
-    setEditingBook(book);
-    form.setFieldsValue({
-      title: book.title,
-      author: normalizeArray(book.author),
-      category: normalizeArray(book.category),
-      description: book.description || "",
-      coverImage: book.coverImage || "",
-      publishDate: book.publishDate?.slice?.(0, 10) || "",
-    });
-    setModalOpen(true);
-  };
-
-  const closeModal = () => {
-    setModalOpen(false);
-    setEditingBook(null);
-    form.resetFields();
-  };
-
-  const handleSubmit = async () => {
-    try {
-      const values = await form.validateFields();
-      const payload = { ...values, author: normalizeArray(values.author), category: normalizeArray(values.category) };
-      setSaving(true);
-      if (editingBook) {
-        await bookService.updateBook(token, editingBook._id, payload);
-        message.success("Cập nhật sách thành công");
-      } else {
-        await bookService.createBook(token, payload);
-        message.success("Thêm sách mới thành công");
+        if (active) setStats({ totalBooks, totalReviews, averageRating });
+      } catch (error) {
+        // Không hiện thông báo "không có quyền" trong giao diện Publisher.
+        if (error.response?.status !== 401 && error.response?.status !== 403) {
+          message.error("Không thể tải Dashboard");
+        }
       }
-      closeModal();
-      await fetchBooks();
-    } catch (error) {
-      if (error.errorFields) return;
-      message.error(error.response?.data?.message || "Không thể lưu thông tin sách");
-    } finally {
-      setSaving(false);
-    }
-  };
+    };
 
-  const handleDelete = async (bookId) => {
-    try {
-      await bookService.deleteBook(token, bookId);
-      message.success("Đã xóa sách");
-      await fetchBooks();
-    } catch (error) {
-      message.error(error.response?.data?.message || "Không thể xóa sách này");
-    }
-  };
+    loadDashboard();
+    return () => { active = false; };
+  }, [token]);
 
   return (
     <div className="publisher-page">
-      <PublisherHeader user={user} onCreate={openCreate} />
+      <PublisherHeader user={user} />
       <Alert
         className="publisher-notice"
         type="info"
         showIcon
-        icon={<CheckCircleOutlined />}
-        message="Bạn đang ở không gian quản lý Publisher"
-        description="Bạn chỉ có thể chỉnh sửa hoặc xóa sách thuộc tài khoản Publisher của mình. Backend sẽ kiểm tra quyền sở hữu ở mỗi thao tác."
+        message="Tổng quan Publisher"
+        description="Dashboard chỉ hiển thị số liệu tổng quan. Để thêm hoặc chỉnh sửa sách, hãy mở trang Quản lý sách."
       />
-      <PublisherStats totalBooks={publisherBooks.length} averageRating={averageRating} totalReviews={totalReviews} email={user?.email} />
-      <Row gutter={[16, 16]} align="stretch">
-        <Col xs={24} xl={17}>
-          <PublisherBooks
-            books={filteredBooks}
-            loading={loading}
-            search={search}
-            category={category}
-            categories={categories}
-            onSearch={setSearch}
-            onCategoryChange={setCategory}
-            onRefresh={fetchBooks}
-            onEdit={openEdit}
-            onDelete={handleDelete}
-          />
+      <Row gutter={[16, 16]} className="stats-row">
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="stat-card stat-card-blue">
+            <Statistic title="Tổng số sách" value={stats.totalBooks || 0} prefix={<BookOutlined />} />
+            <Text type="secondary">Sách thuộc hồ sơ của bạn</Text>
+          </Card>
         </Col>
-        <Col xs={24} xl={7}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="stat-card stat-card-purple">
+            <Statistic title="Đánh giá trung bình" value={stats.averageRating || 0} precision={1} prefix={<StarFilled />} />
+            <Text type="secondary">Trên thang điểm 5.0</Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="stat-card stat-card-green">
+            <Statistic title="Lượt đánh giá" value={stats.totalReviews || 0} prefix={<CommentOutlined />} />
+            <Text type="secondary">Phản hồi từ độc giả</Text>
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card className="stat-card stat-card-orange">
+            <Statistic title="Báo cáo liên quan" value="Xem chi tiết" prefix={<FlagOutlined />} />
+            <Text type="secondary">Trong mục Báo cáo</Text>
+          </Card>
+        </Col>
+      </Row>
+      <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
+        <Col xs={24} lg={10}>
           <PublisherProfile user={user} />
         </Col>
       </Row>
-      <PublisherBookForm open={modalOpen} editingBook={editingBook} form={form} saving={saving} onCancel={closeModal} onSubmit={handleSubmit} />
     </div>
   );
 };

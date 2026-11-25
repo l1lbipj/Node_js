@@ -1,40 +1,9 @@
-
 import api from "./api";
-
-const commentService = {
-  // Admin lấy danh sách bình luận
-  getAllComments: async (token, params = {}) => {
-    const response = await api.get("/comments/admin", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      params,
-    });
-
-    return response.data;
-  },
-
-  // Admin xem chi tiết bình luận
-  getCommentById: async (token, commentId) => {
-    const response = await api.get(`/comments/admin/${commentId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    return response.data;
-  },
-
-  // Xóa bình luận (Admin có thể xóa mọi bình luận)
-  deleteComment: async (token, commentId) => {
-    const response = await api.delete(`/comments/${commentId}`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    return response.data;
-  },
-};
-
-export default commentService;
+const h=(token)=>({headers:{Authorization:`Bearer ${token}`}});
+const commentService={
+ getPublisherComments:async(token)=>{const r=await api.get("/comments/publisher",h(token));return r.data;},
+ replyPublisherComment:async(token,id,content)=>{const r=await api.post(`/comments/${id}/reply`,{content},h(token));return r.data;},
+ getAllComments:async(token,params={})=>{const r=await api.get("/comments/admin",{...h(token),params});return r.data;},
+ getCommentById:async(token,id)=>{const r=await api.get(`/comments/admin/${id}`,h(token));return r.data;},
+ deleteComment:async(token,id)=>{const r=await api.delete(`/comments/${id}`,h(token));return r.data;},
+}; export default commentService;

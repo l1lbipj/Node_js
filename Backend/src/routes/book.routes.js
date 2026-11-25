@@ -7,6 +7,12 @@ const roleMiddleware = require('../middlewares/roleMiddleware');
 
 // Public Routes
 router.get('/', bookController.getAllBooks);
+router.get(
+  "/mine",
+  authMiddleware,
+  roleMiddleware("publisher"),
+  bookController.getMyBooks,
+);
 router.get('/:id', bookController.getBookById);
 
 // Protected Routes

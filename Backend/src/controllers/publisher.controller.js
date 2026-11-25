@@ -2,6 +2,30 @@ const mongoose = require("mongoose");
 const Publisher = require("../models/publisher.model");
 const User = require("../models/user.model");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
+const Book = require("../models/book.model");
+
+
+// Publisher xem hồ sơ của chính mình và thống kê tối thiểu cho Dashboard.
+const getMyPublisher = async (req, res, next) => {
+  try {
+    const publisher = await Publisher.findOne({ userId: req.user._id }).populate(
+      "userId", "fullName email role avatar"
+    );
+    if (!publisher) return errorResponse(res, "Tài khoản chưa có hồ sơ Publisher", 404);
+    const [totalBooks, ratingStats] = await Promise.all([
+      Book.countDocuments({ publisherId: publisher._id }),
+      Book.aggregate([
+        { $match: { publisherId: publisher._id } },
+        { $group: { _id: null, averageRating: { $avg: "$averageRating" }, totalReviews: { $sum: "$totalReview" } } },
+      ]),
+    ]);
+    const stats = ratingStats[0] || { averageRating: 0, totalReviews: 0 };
+    return successResponse(res, "Lấy thông tin Publisher thành công", {
+      publisher,
+      stats: { totalBooks, averageRating: Number((stats.averageRating || 0).toFixed(2)), totalReviews: stats.totalReviews || 0 },
+    });
+  } catch (error) { next(error); }
+};
 
 // 1. Lấy danh sách Publisher
 const getAllPublishers = async (req, res, next) => {
@@ -258,6 +282,7 @@ const deletePublisher = async (req, res, next) => {
 };
 
 module.exports = {
+  getMyPublisher,
   getAllPublishers,
   getPublisherById,
   createPublisher,

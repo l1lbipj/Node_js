@@ -3,8 +3,11 @@ const Comment = require("../models/comment.model");
 const Review = require("../models/review.model");
 const ForumTopic = require("../models/forumTopic.model");
 const Report = require("../models/report.model");
+const Publisher = require("../models/publisher.model");
+const Book = require("../models/book.model");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
 const countCharacters = require("../utils/countCharacters");
+const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Tạo lỗi HTTP để xử lý trong try/catch
 const createHttpError = (statusCode, message) => {
@@ -77,6 +80,52 @@ const deleteCommentTree = async (comment, session) => {
   );
 
   return result.deletedCount;
+};
+
+
+const getPublisherContext = async (userId) => {
+  const publisher = await Publisher.findOne({ userId });
+  if (!publisher) return null;
+  const books = await Book.find({ publisherId: publisher._id }).select("_id title");
+  const bookIds = books.map((book) => book._id);
+  const reviews = await Review.find({ bookId: { $in: bookIds } }).select("_id bookId");
+  return { publisher, books, bookIds, reviewIds: reviews.map((review) => review._id) };
+};
+
+// Publisher xem mọi bình luận trên các review thuộc sách của mình.
+const getPublisherComments = async (req, res, next) => {
+  try {
+    const context = await getPublisherContext(req.user._id);
+    if (!context) return errorResponse(res, "Tài khoản chưa có hồ sơ Publisher", 404);
+    const comments = await Comment.find({ targetType: "Review", targetId: { $in: context.reviewIds } })
+      .populate("userId", "fullName avatar role")
+      .populate("parentCommentId", "content userId createdAt")
+      .populate({ path: "targetId", select: "bookId rating comment", populate: { path: "bookId", select: "title coverImage" } })
+      .sort({ createdAt: -1 });
+    return successResponse(res, "Lấy bình luận của Publisher thành công", { comments, totalComments: comments.length });
+  } catch (error) { next(error); }
+};
+
+// Publisher trả lời một bình luận thuộc review của sách mình sở hữu.
+const createPublisherReply = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { content } = req.body;
+    if (!mongoose.Types.ObjectId.isValid(id)) return errorResponse(res, "Comment ID không hợp lệ", 400);
+    if (typeof content !== "string" || !content.trim()) return errorResponse(res, "Nội dung trả lời không được để trống", 400);
+    const trimmedContent = content.trim();
+    if (countCharacters(trimmedContent) > 2000) return errorResponse(res, "Nội dung trả lời không được vượt quá 2000 ký tự", 400);
+    const parent = await Comment.findById(id);
+    if (!parent) return errorResponse(res, "Không tìm thấy bình luận", 404);
+    const context = await getPublisherContext(req.user._id);
+    if (!context) return errorResponse(res, "Tài khoản chưa có hồ sơ Publisher", 404);
+    if (parent.targetType !== "Review" || !context.reviewIds.some((reviewId) => reviewId.toString() === parent.targetId.toString())) {
+      return errorResponse(res, "Bạn chỉ được trả lời bình luận trên sách của mình", 403);
+    }
+    const reply = await Comment.create({ userId: req.user._id, targetType: parent.targetType, targetId: parent.targetId, parentCommentId: parent._id, content: trimmedContent });
+    await reply.populate("userId", "fullName avatar role");
+    return successResponse(res, "Trả lời bình luận thành công", reply, 201);
+  } catch (error) { next(error); }
 };
 
 const createComment = async (req, res, next) => {
@@ -614,6 +663,8 @@ const getAdminCommentById = async (req, res, next) => {
 };
 
 module.exports = {
+  getPublisherComments,
+  createPublisherReply,
   createComment,
   getCommentsByTarget,
   getCommentById,

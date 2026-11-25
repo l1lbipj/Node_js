@@ -7,6 +7,8 @@ const roleMiddleware = require("../middlewares/roleMiddleware");
 
 // Tất cả Comment API đều yêu cầu đăng nhập
 router.use(authMiddleware);
+router.get("/publisher", roleMiddleware("publisher"), commentController.getPublisherComments);
+router.post("/:id/reply", roleMiddleware("publisher"), commentController.createPublisherReply);
 
 // ========================================
 // COMMENT MANAGEMENT

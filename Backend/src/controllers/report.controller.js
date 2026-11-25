@@ -1,6 +1,34 @@
 const mongoose = require("mongoose");
 const Report = require("../models/report.model");
+const Publisher = require("../models/publisher.model");
+const Book = require("../models/book.model");
+const Review = require("../models/review.model");
+const Comment = require("../models/comment.model");
 const { successResponse, errorResponse } = require("../utils/apiResponse");
+
+
+// Publisher xem các báo cáo liên quan tới review/bình luận trên sách của mình.
+const getPublisherReports = async (req, res, next) => {
+  try {
+    const publisher = await Publisher.findOne({ userId: req.user._id });
+    if (!publisher) return errorResponse(res, "Tài khoản chưa có hồ sơ Publisher", 404);
+    const books = await Book.find({ publisherId: publisher._id }).select("_id");
+    const bookIds = books.map((book) => book._id);
+    const reviews = await Review.find({ bookId: { $in: bookIds } }).select("_id");
+    const reviewIds = reviews.map((review) => review._id);
+    const comments = await Comment.find({ targetType: "Review", targetId: { $in: reviewIds } }).select("_id");
+    const commentIds = comments.map((comment) => comment._id);
+    const reports = await Report.find({ $or: [
+      { targetType: "Review", targetId: { $in: reviewIds } },
+      { targetType: "Comment", targetId: { $in: commentIds } },
+    ]})
+      .populate("userId", "fullName email avatar role")
+      .populate("adminId", "fullName email role")
+      .populate("targetId")
+      .sort({ createdAt: -1 });
+    return successResponse(res, "Lấy báo cáo liên quan đến sách thành công", { reports, totalReports: reports.length });
+  } catch (error) { next(error); }
+};
 
 // ========================================
 // ADMIN REPORT MANAGEMENT
@@ -187,6 +215,7 @@ const updateReportStatus = async (req, res, next) => {
 };
 
 module.exports = {
+  getPublisherReports,
   getAllReports,
   getReportById,
   updateReportStatus,

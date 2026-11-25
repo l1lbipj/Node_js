@@ -8,6 +8,9 @@ const roleMiddleware = require("../middlewares/roleMiddleware");
 // Tất cả Publisher API đều yêu cầu đăng nhập
 router.use(authMiddleware);
 
+// Publisher chỉ được xem hồ sơ và thống kê của chính mình.
+router.get("/me", roleMiddleware("publisher"), publisherController.getMyPublisher);
+
 // Chỉ Admin được quản lý Publisher
 router.use(roleMiddleware("admin"));
 
